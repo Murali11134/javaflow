@@ -4,6 +4,15 @@
   "description": "Understand your Java codebase through interactive mindmaps with NLP summaries",
   "version": "0.1.0",
   "publisher": "javaflow",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Murali11134/javaflow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Murali11134/javaflow/issues"
+  },
+  "homepage": "https://github.com/Murali11134/javaflow#readme",
   "engines": {
     "vscode": "^1.85.0"
   },
