@@ -181,7 +181,7 @@ JavaFlow contributes the following VS Code settings:
 - Constructors, records, annotations, lambdas, deeply nested classes, and complex generics may be missed or parsed incorrectly.
 - The `java-parser` dependency is listed but is not currently used by the parser implementation.
 - The folder scan is capped at 200 Java files.
-- The test script exists, but no test runner file is currently included.
+- The test suite currently covers core parser and mind map generation behavior, but broader edge-case coverage is still needed.
 - The webview depends on CDN-loaded libraries, so it may not work offline.
 - Webview security should be improved with a stricter Content Security Policy.
 - Template-based summaries are helpful, but they are not true semantic code understanding.
@@ -204,12 +204,12 @@ Runs TypeScript in watch mode during development.
 npm test
 ```
 
-Currently this command compiles the extension and then expects `out/test/runTest.js`. The test runner is not included yet, so tests need to be added before this command can pass.
+Compiles the extension and runs the basic test suite from `src/test/runTest.ts`.
 
 ## Suggested Improvements
 
 - Replace the regex parser with a real Java AST parser or fully integrate the existing `java-parser` dependency.
-- Add unit tests for parser behavior, summary generation, and mind map generation.
+- Expand unit tests for parser behavior, summary generation, and mind map generation.
 - Add VS Code extension integration tests.
 - Bundle Markmap assets locally instead of loading them from a CDN.
 - Add a Content Security Policy to the webview.

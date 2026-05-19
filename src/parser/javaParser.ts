@@ -50,12 +50,12 @@ export interface JavaClass {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function extractJavadoc(src: string, pos: number): string {
-  const before = src.substring(0, pos).trimEnd();
-  if (!before.endsWith('*/')) { return ''; }
-  const start = before.lastIndexOf('/**');
-  if (start === -1) { return ''; }
-  const raw = before.substring(start + 3, before.length - 2);
+interface StrippedSource {
+  text: string;
+  rawIndexByTextIndex: number[];
+}
+
+function cleanJavadocBlock(raw: string): string {
   return raw
     .split('\n')
     .map(l => l.replace(/^\s*\*\s?/, '').trim())
@@ -63,10 +63,60 @@ function extractJavadoc(src: string, pos: number): string {
     .join(' ');
 }
 
-function stripComments(src: string): string {
-  return src
-    .replace(/\/\*[\s\S]*?\*\//g, m => '\n'.repeat((m.match(/\n/g) || []).length))
-    .replace(/\/\/[^\n]*/g, '');
+function extractEmbeddedJavadoc(src: string): string {
+  const match = src.match(/\/\*\*([\s\S]*?)\*\//);
+  return match ? cleanJavadocBlock(match[1]) : '';
+}
+
+function extractJavadoc(src: string, pos: number): string {
+  const before = src.substring(0, pos).trimEnd();
+  if (!before.endsWith('*/')) { return ''; }
+  const start = before.lastIndexOf('/**');
+  if (start === -1) { return ''; }
+  const raw = before.substring(start + 3, before.length - 2);
+  return cleanJavadocBlock(raw);
+}
+
+function stripComments(src: string): StrippedSource {
+  const chars: string[] = [];
+  const rawIndexByTextIndex: number[] = [];
+
+  for (let i = 0; i < src.length;) {
+    if (src.startsWith('/*', i)) {
+      const end = src.indexOf('*/', i + 2);
+      const stop = end === -1 ? src.length : end + 2;
+      for (let j = i; j < stop; j++) {
+        if (src[j] === '\n') {
+          chars.push('\n');
+          rawIndexByTextIndex.push(j);
+        }
+      }
+      i = stop;
+      continue;
+    }
+
+    if (src.startsWith('//', i)) {
+      while (i < src.length && src[i] !== '\n') {
+        i++;
+      }
+      continue;
+    }
+
+    chars.push(src[i]);
+    rawIndexByTextIndex.push(i);
+    i++;
+  }
+
+  return {
+    text: chars.join(''),
+    rawIndexByTextIndex
+  };
+}
+
+function rawIndexForMatch(stripped: StrippedSource, cleanIndex: number, matchText: string): number {
+  const firstTokenOffset = matchText.search(/\S/);
+  const adjustedIndex = cleanIndex + (firstTokenOffset === -1 ? 0 : firstTokenOffset);
+  return stripped.rawIndexByTextIndex[adjustedIndex] ?? cleanIndex;
 }
 
 function parseParameters(raw: string): JavaParameter[] {
@@ -154,7 +204,8 @@ export function parseJavaFile(source: string, filePath: string): JavaClass[] {
       }
     }
     const rawBody = source.substring(bodyStart + 1, bodyEnd);
-    const cleanBody = stripComments(rawBody);
+    const strippedBody = stripComments(rawBody);
+    const cleanBody = strippedBody.text;
 
     // Fields
     const fields: JavaField[] = [];
@@ -179,7 +230,7 @@ export function parseJavaFile(source: string, filePath: string): JavaClass[] {
           : /private/.test(mods) ? 'private' : 'package',
         isStatic: /static/.test(mods),
         isFinal: /final/.test(mods),
-        javadoc: extractJavadoc(rawBody, fm.index)
+        javadoc: extractJavadoc(rawBody, rawIndexForMatch(strippedBody, fm.index, fm[0]))
       });
     }
 
@@ -231,7 +282,7 @@ export function parseJavaFile(source: string, filePath: string): JavaClass[] {
         parameters: parseParameters(params),
         isStatic: /static/.test(mods),
         isAbstract: /abstract/.test(mods),
-        javadoc: extractJavadoc(rawBody, mm2.index),
+        javadoc: extractJavadoc(rawBody, rawIndexForMatch(strippedBody, mm2.index, mm2[0])),
         callsTo
       });
     }
@@ -245,7 +296,7 @@ export function parseJavaFile(source: string, filePath: string): JavaClass[] {
       interfaces,
       fields,
       methods,
-      javadoc,
+      javadoc: javadoc || extractEmbeddedJavadoc(cm[0]),
       packageName,
       imports,
       filePath

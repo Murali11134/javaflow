@@ -2,6 +2,12 @@
 
 All notable changes to JavaFlow will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Basic test runner for parser and mind map generation behavior.
+
 ## [0.1.0] - Initial Prototype
 
 ### Added
