@@ -1,0 +1,95 @@
+{
+  "name": "javaflow",
+  "displayName": "JavaFlow",
+  "description": "Understand your Java codebase through interactive mindmaps with NLP summaries",
+  "version": "0.1.0",
+  "publisher": "javaflow",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other", "Visualization"],
+  "keywords": ["java", "mindmap", "codebase", "visualization", "nlp"],
+  "activationEvents": [
+    "onLanguage:java",
+    "onCommand:javaflow.showMindmap",
+    "onCommand:javaflow.showMindmapForFolder"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "javaflow.showMindmap",
+        "title": "JavaFlow: Show Mindmap",
+        "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "javaflow.showMindmapForFolder",
+        "title": "JavaFlow: Show Mindmap for Folder",
+        "icon": "$(type-hierarchy)"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "javaflow.showMindmap",
+          "when": "resourceExtname == .java",
+          "group": "navigation"
+        },
+        {
+          "command": "javaflow.showMindmapForFolder",
+          "when": "explorerResourceIsFolder || explorerResourceIsRoot",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "javaflow.showMindmap",
+          "when": "resourceExtname == .java",
+          "group": "navigation"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "javaflow.showMindmap",
+          "when": "resourceExtname == .java",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "JavaFlow",
+      "properties": {
+        "javaflow.maxDepth": {
+          "type": "number",
+          "default": 3,
+          "description": "Maximum depth of call graph to traverse"
+        },
+        "javaflow.showPrivateMembers": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include private fields and methods in the mindmap"
+        },
+        "javaflow.nlpSummaries": {
+          "type": "boolean",
+          "default": true,
+          "description": "Generate NLP plain-English summaries for classes and methods"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "java-parser": "^0.3.2"
+  }
+}
