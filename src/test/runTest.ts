@@ -115,6 +115,142 @@ const tests: TestCase[] = [
       assert.ok(markdown.includes('Methods (1)'));
       assert.ok(markdown.includes('getUserName(String)'));
     }
+  },
+  {
+    name: 'parseJavaFile captures calls inside nested method blocks',
+    run: () => {
+      const nestedJava = `
+package com.example.nested;
+
+import java.io.IOException;
+import java.util.List;
+
+public class NestedExamples {
+  public void process(List<String> names) {
+    if (names.isEmpty()) {
+      handleEmpty();
+    } else {
+      handleNames(names);
+    }
+
+    for (String name : names) {
+      validateName(name);
+    }
+
+    while (shouldRetry()) {
+      retry();
+    }
+
+    try {
+      risky();
+    } catch (IOException ex) {
+      recover(ex);
+    } finally {
+      cleanup();
+    }
+  }
+}
+`;
+
+      const [cls] = parseJavaFile(nestedJava, 'NestedExamples.java');
+      const method = cls.methods.find(m => m.name === 'process');
+
+      assert.ok(method);
+      assert.deepStrictEqual(method.callsTo, [
+        'isEmpty',
+        'handleEmpty',
+        'handleNames',
+        'validateName',
+        'shouldRetry',
+        'retry',
+        'risky',
+        'recover',
+        'cleanup'
+      ]);
+    }
+  },
+  {
+    name: 'parseJavaFile captures calls inside lambda bodies',
+    run: () => {
+      const nestedJava = `
+package com.example.nested;
+
+import java.util.List;
+
+public class NestedExamples {
+  public void lambdas(List<String> names) {
+    names.forEach(name -> {
+      normalize(name);
+      saveName(name);
+    });
+  }
+}
+`;
+
+      const [cls] = parseJavaFile(nestedJava, 'NestedExamples.java');
+      const method = cls.methods.find(m => m.name === 'lambdas');
+
+      assert.ok(method);
+      assert.deepStrictEqual(method.callsTo, ['forEach', 'normalize', 'saveName']);
+    }
+  },
+  {
+    name: 'parseJavaFile excludes anonymous class methods from enclosing methods',
+    run: () => {
+      const nestedJava = `
+package com.example.nested;
+
+public class NestedExamples {
+  public void anonymousClass() {
+    Runnable runner = new Runnable() {
+      @Override
+      public void run() {
+        hiddenRun();
+      }
+    };
+    runner.run();
+    afterAnonymous();
+  }
+}
+`;
+
+      const [cls] = parseJavaFile(nestedJava, 'NestedExamples.java');
+      const method = cls.methods.find(m => m.name === 'anonymousClass');
+
+      assert.ok(method);
+      assert.deepStrictEqual(method.callsTo, ['run', 'afterAnonymous']);
+      assert.ok(!cls.methods.some(m => m.name === 'hiddenRun'));
+    }
+  },
+  {
+    name: 'parseJavaFile keeps inner class methods separate from outer classes',
+    run: () => {
+      const nestedJava = `
+package com.example.nested;
+
+public class NestedExamples {
+  public void outerOnly() {
+    visibleOuter();
+  }
+
+  static class InnerWorker {
+    public void work() {
+      innerCall();
+    }
+  }
+}
+`;
+
+      const classes = parseJavaFile(nestedJava, 'NestedExamples.java');
+      const outer = classes.find(cls => cls.name === 'NestedExamples');
+      const inner = classes.find(cls => cls.name === 'InnerWorker');
+
+      assert.ok(outer);
+      assert.ok(inner);
+      assert.deepStrictEqual(outer.methods.map(method => method.name), ['outerOnly']);
+      assert.deepStrictEqual(inner.methods.map(method => method.name), ['work']);
+      assert.deepStrictEqual(inner.methods[0].callsTo, ['innerCall']);
+    }
   }
 ];
 

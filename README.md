@@ -63,6 +63,8 @@ It extracts:
 - Javadoc comments
 - Simple method call references
 
+The parser keeps method calls inside common nested Java structures, including `if` / `else` blocks, loops, `try` / `catch` / `finally`, and lambda bodies. Named inner classes are returned as separate class entries. Anonymous class method bodies are intentionally excluded from the enclosing method's call list so their internal calls are not misattributed.
+
 ### `src/nlp/summarizer.ts`
 
 This module generates readable summaries for parsed Java code. It first uses Javadoc if available. If Javadoc is missing, it creates simple template-based summaries from class names, method names, field names, parameters, and return types.
@@ -178,7 +180,10 @@ JavaFlow contributes the following VS Code settings:
 ## Cons and Current Limitations
 
 - Java parsing is currently regex-based, so complex Java syntax may not be handled correctly.
-- Constructors, records, annotations, lambdas, deeply nested classes, and complex generics may be missed or parsed incorrectly.
+- Records, some annotations, constructors, sealed classes, and complex generics may be missed or parsed incorrectly.
+- Named inner classes are represented as separate class entries rather than nested children in the output model.
+- Anonymous classes are not represented as class entries; their method bodies are skipped when collecting calls for the enclosing method.
+- Method call extraction is lexical. It records call names, but does not resolve overloads, receiver types, inherited methods, or cross-file symbols.
 - The `java-parser` dependency is listed but is not currently used by the parser implementation.
 - The folder scan is capped at 200 Java files.
 - The test suite currently covers core parser and mind map generation behavior, but broader edge-case coverage is still needed.

@@ -146,6 +146,63 @@ function extractCallsTo(body: string): string[] {
   return Array.from(calls);
 }
 
+function findMatchingBrace(src: string, openBrace: number): number {
+  let depth = 0;
+  for (let i = openBrace; i < src.length; i++) {
+    if (src[i] === '{') { depth++; }
+    else if (src[i] === '}') {
+      depth--;
+      if (depth === 0) { return i; }
+    }
+  }
+  return openBrace;
+}
+
+function maskRange(src: string, start: number, end: number): string {
+  if (start < 0 || end < start) { return src; }
+  return src.slice(0, start) + ' '.repeat(end - start + 1) + src.slice(end + 1);
+}
+
+function maskRanges(src: string, ranges: Array<{ start: number; end: number }>): string {
+  return ranges
+    .slice()
+    .sort((a, b) => b.start - a.start)
+    .reduce((current, range) => maskRange(current, range.start, range.end), src);
+}
+
+function maskAnonymousClassBodies(src: string): string {
+  let masked = src;
+  const anonymousClassRe = /\bnew\s+[\w.]+(?:\s*<[^>{}]*>)?\s*\([^)]*\)\s*\{/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = anonymousClassRe.exec(masked)) !== null) {
+    const openBrace = match.index + match[0].lastIndexOf('{');
+    const closeBrace = findMatchingBrace(masked, openBrace);
+    if (closeBrace > openBrace) {
+      masked = maskRange(masked, openBrace + 1, closeBrace - 1);
+      anonymousClassRe.lastIndex = closeBrace + 1;
+    }
+  }
+
+  return masked;
+}
+
+function maskNestedTypeDeclarations(
+  body: string,
+  classBodyStart: number,
+  classBodyEnd: number,
+  ranges: Array<{ start: number; end: number }>
+): string {
+  const nestedRanges = ranges
+    .filter(range => range.start > classBodyStart && range.end < classBodyEnd)
+    .map(range => ({
+      start: range.start - classBodyStart - 1,
+      end: range.end - classBodyStart - 1
+    }));
+
+  return maskRanges(body, nestedRanges);
+}
+
 // ---------------------------------------------------------------------------
 // Main parser
 // ---------------------------------------------------------------------------
@@ -177,9 +234,29 @@ export function parseJavaFile(source: string, filePath: string): JavaClass[] {
     '\\s*\\{'                                        // opening brace
   ].join('');
   const classRe = new RegExp(classPattern, 'g');
+  const classMatches: Array<{
+    match: RegExpExecArray;
+    bodyStart: number;
+    bodyEnd: number;
+    declarationStart: number;
+    declarationEnd: number;
+  }> = [];
 
   let cm: RegExpExecArray | null;
   while ((cm = classRe.exec(source)) !== null) {
+    const bodyStart = cm.index + cm[0].length - 1;
+    const bodyEnd = findMatchingBrace(source, bodyStart);
+    classMatches.push({
+      match: cm,
+      bodyStart,
+      bodyEnd,
+      declarationStart: cm.index,
+      declarationEnd: bodyEnd
+    });
+  }
+
+  for (const classMatch of classMatches) {
+    cm = classMatch.match;
     const modifiers = cm[1] || '';
     const rawKind = cm[2];
     const name = cm[3];
@@ -193,18 +270,21 @@ export function parseJavaFile(source: string, filePath: string): JavaClass[] {
       : 'class';
 
     // Extract class body via balanced brace walking
-    const bodyStart = cm.index + cm[0].length - 1;
-    let depth = 0;
-    let bodyEnd = bodyStart;
-    for (let i = bodyStart; i < source.length; i++) {
-      if (source[i] === '{') { depth++; }
-      else if (source[i] === '}') {
-        depth--;
-        if (depth === 0) { bodyEnd = i; break; }
-      }
-    }
+    const bodyStart = classMatch.bodyStart;
+    const bodyEnd = classMatch.bodyEnd;
     const rawBody = source.substring(bodyStart + 1, bodyEnd);
-    const strippedBody = stripComments(rawBody);
+    const isolatedBody = maskAnonymousClassBodies(
+      maskNestedTypeDeclarations(
+        rawBody,
+        bodyStart,
+        bodyEnd,
+        classMatches.map(match => ({
+          start: match.declarationStart,
+          end: match.declarationEnd
+        }))
+      )
+    );
+    const strippedBody = stripComments(isolatedBody);
     const cleanBody = strippedBody.text;
 
     // Fields
