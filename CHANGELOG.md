@@ -7,6 +7,14 @@ All notable changes to JavaFlow will be documented in this file.
 ### Added
 
 - Basic test runner for parser and mind map generation behavior.
+- Local-first privacy policy.
+- Product roadmap for publishing, parsing, Spring Boot support, community growth, and future monetization.
+- Contributing guide for open-source contributors.
+- Security policy with webview and dependency safety principles.
+
+### Changed
+
+- Clarified that JavaFlow is an early-stage prototype and needs stronger parsing, webview hardening, and documentation before production release.
 
 ## [0.1.0] - Initial Prototype
 
@@ -25,5 +33,5 @@ All notable changes to JavaFlow will be documented in this file.
 - Java parsing is regex-based and may miss complex Java syntax.
 - Constructors, annotations, records, lambdas, complex generics, and nested declarations need stronger support.
 - The listed `java-parser` dependency is not yet integrated into the implementation.
-- Automated tests are not included yet.
 - Webview assets are currently loaded from a CDN.
+- Webview Content Security Policy should be improved before wider production usage.
