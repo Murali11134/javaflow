@@ -179,6 +179,61 @@ function parseFields(node: any, source: string, modKey: string): JavaField[] {
   }).filter(f => f.name);
 }
 
+// ── Call-graph extraction ──────────────────────────────────────────────────
+
+/**
+ * Walk a method/constructor body CST node and collect every method name that
+ * is invoked, including chained calls.  Deduplicates via Set.
+ *
+ * Pattern: a `primary` node whose `primarySuffix` list contains a
+ * `methodInvocationSuffix` entry.  The method name comes from:
+ *   - suffix index 0 → last identifier inside `primaryPrefix.fqnOrRefType`
+ *   - suffix index i > 0 → the Identifier in the immediately preceding suffix
+ *     (the `Dot + Identifier` suffix that precedes the call parentheses)
+ */
+function extractCallsTo(bodyNode: any): string[] {
+  const calls = new Set<string>();
+
+  function fqnLastIdent(fqnNode: any): string | null {
+    const fc = fqnNode.children ?? {};
+    const rests = kids(fc, 'fqnOrRefTypePartRest');
+    if (rests.length > 0) {
+      const common = kid(rests[rests.length - 1].children, 'fqnOrRefTypePartCommon');
+      return kids(common?.children, 'Identifier')[0]?.image ?? null;
+    }
+    const common = kid(kid(fc, 'fqnOrRefTypePartFirst')?.children, 'fqnOrRefTypePartCommon');
+    return kids(common?.children, 'Identifier')[0]?.image ?? null;
+  }
+
+  function walkPrimary(node: any): void {
+    const ctx = node.children ?? {};
+    const suffixes = kids(ctx, 'primarySuffix');
+    for (let i = 0; i < suffixes.length; i++) {
+      const sc = suffixes[i].children ?? {};
+      if (!kid(sc, 'methodInvocationSuffix')) { continue; }
+      let name: string | null = null;
+      if (i === 0) {
+        const fqn = kid(kid(ctx, 'primaryPrefix')?.children, 'fqnOrRefType');
+        if (fqn) { name = fqnLastIdent(fqn); }
+      } else {
+        name = kids(suffixes[i - 1].children, 'Identifier')[0]?.image ?? null;
+      }
+      if (name) { calls.add(name); }
+    }
+  }
+
+  function walk(node: any): void {
+    if (!node || typeof node.image === 'string') { return; }
+    if (node.name === 'primary') { walkPrimary(node); }
+    for (const arr of Object.values(node.children ?? {})) {
+      for (const c of arr as any[]) { walk(c); }
+    }
+  }
+
+  walk(bodyNode);
+  return [...calls];
+}
+
 // ── Method parsing ─────────────────────────────────────────────────────────
 
 function parseMethod(node: any, source: string, modKey: string): JavaMethod {
@@ -190,13 +245,14 @@ function parseMethod(node: any, source: string, modKey: string): JavaMethod {
   const declCtx    = kid(headerCtx, 'methodDeclarator')?.children ?? {};
   const name       = kids(declCtx, 'Identifier')[0]?.image ?? '';
   const parameters = extractParams(kid(declCtx, 'formalParameterList')?.children);
+  const bodyNode = kid(ctx, 'methodBody');
   return {
     name, returnType, parameters,
     visibility: mods.visibility,
     isStatic:   mods.isStatic,
     isAbstract: mods.isAbstract,
     javadoc:    findJavadoc(source, startOf(node)),
-    callsTo:    [],
+    callsTo:    bodyNode ? extractCallsTo(bodyNode) : [],
   };
 }
 
@@ -209,12 +265,13 @@ function parseCtor(node: any, source: string): JavaMethod {
   const typeIdCtx = kid(kid(declCtx, 'simpleTypeName')?.children, 'typeIdentifier')?.children ?? {};
   const name    = kids(typeIdCtx, 'Identifier')[0]?.image ?? '';
   const parameters = extractParams(kid(declCtx, 'formalParameterList')?.children);
+  const bodyNode = kid(ctx, 'constructorBody');
   return {
     name, returnType: '', parameters,
     visibility: mods.visibility,
     isStatic: false, isAbstract: false,
     javadoc: findJavadoc(source, startOf(node)),
-    callsTo: [],
+    callsTo: bodyNode ? extractCallsTo(bodyNode) : [],
   };
 }
 

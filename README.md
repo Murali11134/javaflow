@@ -194,7 +194,6 @@ JavaFlow contributes the following VS Code settings:
 ## Current Limitations
 
 - Records, sealed classes, and text blocks are parsed structurally but not yet surfaced in the mindmap output.
-- Method call graph (`callsTo`) is not yet extracted by the CST parser — all methods show an empty call list.
 - The folder scan is capped at 200 Java files.
 - The test suite covers core parser and mindmap generation behaviour; broader edge-case coverage is still needed.
 - Template-based NLP summaries are helpful but are not true semantic code understanding.
@@ -222,7 +221,6 @@ Compiles the extension and runs the basic test suite from `src/test/runTest.ts`.
 ## Suggested Improvements
 
 - Surface records and sealed classes in the mindmap output.
-- Implement method call graph extraction using the CST (walk method bodies for `MethodInvocation` nodes).
 - Expand unit tests for parser behaviour, summary generation, and mindmap generation.
 - Improve folder scanning for large Java projects (beyond the 200-file cap).
 - Publish to the VS Code Marketplace and add an extension badge to this README.
