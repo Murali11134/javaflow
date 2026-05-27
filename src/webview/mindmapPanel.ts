@@ -265,7 +265,9 @@ export class MindmapPanel {
 <div id="search-bar">
   <input id="search-input" type="text" placeholder="Search nodes…" />
   <span id="search-count"></span>
-  <button class="btn" id="btn-search-close">✕</button>
+  <button class="btn" id="btn-prev" title="Previous match">‹</button>
+  <button class="btn" id="btn-next" title="Next match">›</button>
+  <button class="btn" id="btn-search-close" title="Close">✕</button>
 </div>
 
 <!-- Map container -->
@@ -357,6 +359,48 @@ export class MindmapPanel {
   const searchInput = document.getElementById('search-input');
   const searchCount = document.getElementById('search-count');
 
+  let matches = [];
+  let matchIndex = -1;
+
+  function collectMatches(q) {
+    matches = [];
+    function walk(node) {
+      const plain = (node.content || '').replace(/<[^>]*>/g, '').toLowerCase();
+      if (plain.includes(q)) { matches.push(node); }
+      if (node.children) { node.children.forEach(walk); }
+    }
+    walk(mm.state.data);
+  }
+
+  function buildParentMap() {
+    const map = new Map();
+    function walk(node, parent) {
+      if (parent) { map.set(node.state.id, parent); }
+      if (node.children) { node.children.forEach(c => walk(c, node)); }
+    }
+    walk(mm.state.data, null);
+    return map;
+  }
+
+  async function goToMatch(idx) {
+    if (!matches.length) { return; }
+    matchIndex = ((idx % matches.length) + matches.length) % matches.length;
+    const node = matches[matchIndex];
+
+    // Unfold all ancestors so the matched node is visible
+    const parentMap = buildParentMap();
+    let ancestor = parentMap.get(node.state.id);
+    while (ancestor) {
+      if (ancestor.payload) { ancestor.payload.fold = 0; } else { ancestor.payload = { fold: 0 }; }
+      ancestor = parentMap.get(ancestor.state.id);
+    }
+
+    await mm.renderData();
+    await mm.setHighlight(node);
+    await mm.ensureVisible(node, { top: 48, bottom: 48, left: 48, right: 48 });
+    searchCount.textContent = \`\${matchIndex + 1} / \${matches.length}\`;
+  }
+
   document.getElementById('btn-search').addEventListener('click', () => {
     searchBar.classList.toggle('visible');
     if (searchBar.classList.contains('visible')) { searchInput.focus(); }
@@ -365,18 +409,34 @@ export class MindmapPanel {
     searchBar.classList.remove('visible');
     searchInput.value = '';
     searchCount.textContent = '';
+    matches = [];
+    matchIndex = -1;
+    mm.setHighlight(null);
   });
+  document.getElementById('btn-prev').addEventListener('click', () => goToMatch(matchIndex - 1));
+  document.getElementById('btn-next').addEventListener('click', () => goToMatch(matchIndex + 1));
 
   searchInput.addEventListener('input', () => {
     const q = searchInput.value.trim().toLowerCase();
-    if (!q) { searchCount.textContent = ''; return; }
-    let count = 0;
-    function walk(node) {
-      if ((node.content || '').toLowerCase().includes(q)) { count++; }
-      if (node.children) { node.children.forEach(walk); }
+    if (!q) {
+      searchCount.textContent = '';
+      matches = [];
+      matchIndex = -1;
+      mm.setHighlight(null);
+      return;
     }
-    walk(root);
-    searchCount.textContent = count ? \`\${count} match\${count > 1 ? 'es' : ''}\` : 'No matches';
+    collectMatches(q);
+    if (matches.length) {
+      goToMatch(0);
+    } else {
+      searchCount.textContent = 'No matches';
+      mm.setHighlight(null);
+    }
+  });
+
+  searchInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.shiftKey ? goToMatch(matchIndex - 1) : goToMatch(matchIndex + 1); }
+    if (e.key === 'Escape') { document.getElementById('btn-search-close').click(); }
   });
 
 })();
