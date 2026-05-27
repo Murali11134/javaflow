@@ -289,22 +289,20 @@ export class MindmapPanel {
   const markdown = \`${escaped}\`;
 
   await new Promise(r => {
-    if (window.markmap) { r(); return; }
+    if (window.markmap && window.markmap.Transformer) { r(); return; }
     const check = setInterval(() => {
-      if (window.markmap) { clearInterval(check); r(); }
+      if (window.markmap && window.markmap.Transformer) { clearInterval(check); r(); }
     }, 100);
   });
 
   const { Markmap, loadCSS, loadJS } = window.markmap;
   const { Transformer } = window.markmap;
 
-  const transformer = new Transformer();
-  const { root, features } = transformer.transform(markdown);
+  // Empty plugin list disables KaTeX/Prism — neither is used for Java mindmaps
+  // and both would be blocked by the webview CSP anyway.
+  const transformer = new Transformer([]);
+  const { root } = transformer.transform(markdown);
   const rootOriginal = JSON.parse(JSON.stringify(root));
-  const { styles, scripts } = transformer.getUsedAssets(features);
-
-  if (styles) { loadCSS(styles); }
-  if (scripts) { await loadJS(scripts, { getMarkmap: () => window.markmap }); }
 
   const svgEl = document.getElementById('mindmap');
   const mm = Markmap.create(svgEl, {
