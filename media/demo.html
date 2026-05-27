@@ -261,20 +261,25 @@ const markdown = `
   document.getElementById('btn-fit').addEventListener('click', () => mm.fit());
 
   document.getElementById('btn-expand-all').addEventListener('click', () => {
-    mm.setData(root);
-    setTimeout(() => mm.fit(), 50);
+    function expandNode(node) {
+      if (node.payload) { node.payload.fold = 0; } else { node.payload = { fold: 0 }; }
+      if (node.children) { node.children.forEach(expandNode); }
+    }
+    expandNode(mm.state.data);
+    mm.renderData().then(() => mm.fit());
   });
 
   document.getElementById('btn-collapse-all').addEventListener('click', () => {
-    function collapse(node) {
+    function collapseChildren(node) {
       if (node.children) {
-        node.payload = { ...node.payload, fold: 1 };
-        node.children.forEach(collapse);
+        node.children.forEach(child => {
+          if (child.payload) { child.payload.fold = 1; } else { child.payload = { fold: 1 }; }
+          collapseChildren(child);
+        });
       }
     }
-    const collapsed = JSON.parse(JSON.stringify(root));
-    if (collapsed.children) { collapsed.children.forEach(collapse); }
-    mm.setData(collapsed);
+    collapseChildren(mm.state.data);
+    mm.renderData().then(() => mm.fit());
   });
 
   document.getElementById('btn-export').addEventListener('click', () => {

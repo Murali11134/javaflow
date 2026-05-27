@@ -1,18 +1,25 @@
 # JavaFlow
 
+![JavaFlow Demo](media/demo.gif)
+
 JavaFlow is a Visual Studio Code extension that helps developers understand Java codebases through interactive mind maps. It scans Java files, extracts classes, fields, methods, imports, inheritance details, and simple method call references, then renders the result as a Markmap-powered visualization inside VS Code.
 
 The extension is designed for quick code exploration, onboarding, and high-level understanding of Java projects.
 
 ## Features
 
-- Generate a mind map for a single Java file.
-- Generate a package-level mind map for a folder.
-- Extract Java package names, imports, classes, interfaces, enums, fields, and methods.
-- Show simple method call references.
-- Generate plain-English summaries from Javadoc or naming patterns.
-- Search, expand, collapse, fit, and export the rendered mind map as SVG.
-- Configure whether private members and NLP-style summaries are shown.
+- Generate a mind map for a single Java file or an entire folder.
+- Extract classes, interfaces, enums, fields, and methods with visibility modifiers.
+- Extract **constructors** as first-class members alongside methods.
+- Extract **class-level annotations** generically — any `@AnnotationName`, including parameterised forms such as `@Table(name="users")`.
+- Extract **enum constants** in declaration order.
+- Detect **nested and static nested classes** (including builder pattern classes) with correct parent–child links.
+- Parse **generic class declarations** such as `Container<T>` and `Repository<T, ID>`.
+- Show simple method call references and inheritance/interface details.
+- Generate plain-English summaries from Javadoc or naming patterns (NLP).
+- Search, expand all, collapse all, fit to screen, and export the mind map as SVG.
+- All Markmap and D3 assets are **bundled locally** — works fully offline, no CDN required.
+- Configure whether private members and NLP summaries are shown.
 
 ## Folder Structure
 
@@ -53,15 +60,14 @@ This file contains the Java parsing logic. It uses regular expressions and brace
 
 It extracts:
 
-- Package name
-- Imports
-- Classes, interfaces, and enums
-- Fields
-- Methods
-- Visibility modifiers
-- Inheritance and implemented interfaces
-- Javadoc comments
-- Simple method call references
+- Package name and imports
+- Classes, interfaces, enums, and generic class declarations (`Container<T>`)
+- Class-level annotations including parameterised forms (`@Table(name="users")`)
+- Enum constants in declaration order
+- Constructors, fields, and methods with visibility modifiers
+- Nested and static nested classes with correct parent–child links
+- Inheritance (`extends`) and implemented interfaces
+- Javadoc comments and simple method call references
 
 ### `src/nlp/summarizer.ts`
 
@@ -175,16 +181,12 @@ JavaFlow contributes the following VS Code settings:
 - Provides an interactive UI with search, expand, collapse, fit, and export actions.
 - Compiles successfully with TypeScript.
 
-## Cons and Current Limitations
+## Current Limitations
 
-- Java parsing is currently regex-based, so complex Java syntax may not be handled correctly.
-- Constructors, records, annotations, lambdas, deeply nested classes, and complex generics may be missed or parsed incorrectly.
-- The `java-parser` dependency is listed but is not currently used by the parser implementation.
+- Java parsing is regex-based, so some complex syntax (records, sealed classes, lambdas, deeply nested generics) may not be handled correctly.
 - The folder scan is capped at 200 Java files.
-- The test suite currently covers core parser and mind map generation behavior, but broader edge-case coverage is still needed.
-- The webview depends on CDN-loaded libraries, so it may not work offline.
-- Webview security should be improved with a stricter Content Security Policy.
-- Template-based summaries are helpful, but they are not true semantic code understanding.
+- The test suite covers core parser and mind map generation behaviour; broader edge-case coverage is still needed.
+- Template-based NLP summaries are helpful but are not true semantic code understanding.
 
 ## Development Scripts
 
@@ -208,14 +210,11 @@ Compiles the extension and runs the basic test suite from `src/test/runTest.ts`.
 
 ## Suggested Improvements
 
-- Replace the regex parser with a real Java AST parser or fully integrate the existing `java-parser` dependency.
-- Expand unit tests for parser behavior, summary generation, and mind map generation.
-- Add VS Code extension integration tests.
-- Bundle Markmap assets locally instead of loading them from a CDN.
-- Add a Content Security Policy to the webview.
-- Improve folder scanning for large Java projects.
-- Add support for constructors, annotations, records, sealed classes, and modern Java syntax.
-- Add a project logo, screenshots, and marketplace publishing instructions.
+- Replace the regex parser with a real Java AST parser for full syntax coverage.
+- Add support for records, sealed classes, and other modern Java syntax.
+- Expand unit tests for parser behaviour, summary generation, and mind map generation.
+- Improve folder scanning for large Java projects (beyond the 200-file cap).
+- Add marketplace publishing instructions and a VS Code extension badge.
 
 ## Project Status
 
