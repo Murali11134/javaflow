@@ -44,6 +44,14 @@ function renderClass(
 
   lines.push(`${h(headingLevel)} ${emoji} ${cls.name}`);
 
+  // Class-level annotations
+  if (cls.annotations.length > 0) {
+    lines.push(`${h(headingLevel + 1)} 📝 Annotations`);
+    for (const ann of cls.annotations) {
+      lines.push(`${h(headingLevel + 2)} ${ann}`);
+    }
+  }
+
   // Package (only at top level)
   if (headingLevel === 1 && cls.packageName) {
     lines.push(`${h(headingLevel + 1)} 📦 Package`);
@@ -64,6 +72,14 @@ function renderClass(
     }
     for (const iface of cls.interfaces) {
       lines.push(`${h(headingLevel + 2)} implements ${iface}`);
+    }
+  }
+
+  // Enum constants
+  if (cls.enumConstants.length > 0) {
+    lines.push(`${h(headingLevel + 1)} 🔢 Constants`);
+    for (const c of cls.enumConstants) {
+      lines.push(`${h(headingLevel + 2)} ${c}`);
     }
   }
 
@@ -223,7 +239,15 @@ export function generateFolderMindmap(
 
       lines.push(`### ${emoji} ${cls.name}`);
       if (summary) { lines.push(`#### 💡 ${summary.classSummary}`); }
+      if (cls.annotations.length > 0) {
+        lines.push(`#### 📝 ${cls.annotations.join(' ')}`);
+      }
       if (cls.superClass) { lines.push(`#### extends ${cls.superClass}`); }
+      if (cls.enumConstants.length > 0) {
+        const shown = cls.enumConstants.slice(0, 6);
+        const more  = cls.enumConstants.length > 6 ? ` …+${cls.enumConstants.length - 6}` : '';
+        lines.push(`#### 🔢 ${shown.join(', ')}${more}`);
+      }
 
       // Nested classes summary
       if (cls.nestedClasses.length > 0) {
