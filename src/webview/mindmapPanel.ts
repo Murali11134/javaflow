@@ -293,6 +293,7 @@ export class MindmapPanel {
 
   const transformer = new Transformer();
   const { root, features } = transformer.transform(markdown);
+  const rootOriginal = JSON.parse(JSON.stringify(root));
   const { styles, scripts } = transformer.getUsedAssets(features);
 
   if (styles) { loadCSS(styles); }
@@ -305,7 +306,7 @@ export class MindmapPanel {
     spacingHorizontal: 60,
     spacingVertical: 5,
     autoFit: true,
-    initialExpandLevel: 2,
+    initialExpandLevel: -1,
     color: (node) => {
       const depth = node.depth || 0;
       const palette = ['#89b4fa','#a6e3a1','#fab387','#f5c2e7','#94e2d5','#cba6f7','#f38ba8'];
@@ -318,20 +319,11 @@ export class MindmapPanel {
   document.getElementById('btn-fit').addEventListener('click', () => mm.fit());
 
   document.getElementById('btn-expand-all').addEventListener('click', () => {
-    mm.setData(root);
-    setTimeout(() => mm.fit(), 50);
+    mm.setData(rootOriginal, { initialExpandLevel: -1 }).then(() => mm.fit());
   });
 
   document.getElementById('btn-collapse-all').addEventListener('click', () => {
-    function collapse(node) {
-      if (node.children) {
-        node.payload = { ...node.payload, fold: 1 };
-        node.children.forEach(collapse);
-      }
-    }
-    const collapsed = JSON.parse(JSON.stringify(root));
-    if (collapsed.children) { collapsed.children.forEach(collapse); }
-    mm.setData(collapsed);
+    mm.setData(rootOriginal, { initialExpandLevel: 1 }).then(() => mm.fit());
   });
 
   document.getElementById('btn-export').addEventListener('click', () => {
