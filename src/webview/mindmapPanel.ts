@@ -319,21 +319,27 @@ export class MindmapPanel {
   document.getElementById('btn-fit').addEventListener('click', () => mm.fit());
 
   document.getElementById('btn-expand-all').addEventListener('click', () => {
-    function expandAll(node) {
+    // Walk the live tree directly — bypasses setData/_initializeData which would
+    // re-apply initialExpandLevel and overwrite the fold values we set here.
+    function expandNode(node) {
       if (node.payload) { node.payload.fold = 0; } else { node.payload = { fold: 0 }; }
-      if (node.children) { node.children.forEach(expandAll); }
+      if (node.children) { node.children.forEach(expandNode); }
     }
-    const expanded = JSON.parse(JSON.stringify(rootOriginal));
-    expandAll(expanded);
-    // Must pass initialExpandLevel: -1 explicitly — setOptions() persists the previous
-    // Collapse All's initialExpandLevel: 1, causing _initializeData to re-fold every node.
-    mm.setData(expanded, { initialExpandLevel: -1 }).then(() => mm.fit());
+    expandNode(mm.state.data);
+    mm.renderData().then(() => mm.fit());
   });
 
   document.getElementById('btn-collapse-all').addEventListener('click', () => {
-    // Deep-clone so _initializeData doesn't mutate rootOriginal's children in-place.
-    const collapsed = JSON.parse(JSON.stringify(rootOriginal));
-    mm.setData(collapsed, { initialExpandLevel: 1 }).then(() => mm.fit());
+    function collapseChildren(node) {
+      if (node.children) {
+        node.children.forEach(child => {
+          if (child.payload) { child.payload.fold = 1; } else { child.payload = { fold: 1 }; }
+          collapseChildren(child);
+        });
+      }
+    }
+    collapseChildren(mm.state.data);
+    mm.renderData().then(() => mm.fit());
   });
 
   document.getElementById('btn-export').addEventListener('click', () => {
