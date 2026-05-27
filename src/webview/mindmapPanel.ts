@@ -10,22 +10,26 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 
 export class MindmapPanel {
-  public static currentPanel: MindmapPanel | undefined;
+  // One panel per source key (file path or folder path) — allows multiple
+  // panels open simultaneously for side-by-side class comparison.
+  private static readonly _openPanels = new Map<string, MindmapPanel>();
   private readonly _panel: vscode.WebviewPanel;
   private _disposables: vscode.Disposable[] = [];
 
   public static createOrShow(
     extensionUri: vscode.Uri,
     markdownContent: string,
-    title: string
+    title: string,
+    key: string
   ): void {
     const column = vscode.window.activeTextEditor
       ? vscode.ViewColumn.Beside
       : vscode.ViewColumn.One;
 
-    if (MindmapPanel.currentPanel) {
-      MindmapPanel.currentPanel._panel.reveal(column);
-      MindmapPanel.currentPanel._update(markdownContent, title);
+    const existing = MindmapPanel._openPanels.get(key);
+    if (existing) {
+      existing._panel.reveal(column);
+      existing._update(markdownContent, title);
       return;
     }
 
@@ -40,14 +44,15 @@ export class MindmapPanel {
       }
     );
 
-    MindmapPanel.currentPanel = new MindmapPanel(panel, extensionUri, markdownContent, title);
+    MindmapPanel._openPanels.set(key, new MindmapPanel(panel, extensionUri, markdownContent, title, key));
   }
 
   private constructor(
     panel: vscode.WebviewPanel,
     private readonly _extensionUri: vscode.Uri,
     markdownContent: string,
-    title: string
+    title: string,
+    private readonly _key: string
   ) {
     this._panel = panel;
     this._update(markdownContent, title);
@@ -73,7 +78,7 @@ export class MindmapPanel {
   }
 
   public dispose(): void {
-    MindmapPanel.currentPanel = undefined;
+    MindmapPanel._openPanels.delete(this._key);
     this._panel.dispose();
     while (this._disposables.length) {
       const d = this._disposables.pop();

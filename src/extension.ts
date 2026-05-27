@@ -87,7 +87,7 @@ export function activate(context: vscode.ExtensionContext): void {
             const markdown = generateClassMindmap(primary, opts, classes, index);
             const title    = path.basename(fileUri!.fsPath, '.java');
 
-            MindmapPanel.createOrShow(context.extensionUri, markdown, title);
+            MindmapPanel.createOrShow(context.extensionUri, markdown, title, fileUri!.fsPath);
           } catch (err) {
             vscode.window.showErrorMessage(`JavaFlow error: ${(err as Error).message}`);
           }
@@ -147,7 +147,8 @@ export function activate(context: vscode.ExtensionContext): void {
             MindmapPanel.createOrShow(
               context.extensionUri,
               markdown,
-              `${folderName} (${allClasses.length} classes)`
+              `${folderName} (${allClasses.length} classes)`,
+              folderPath!
             );
           } catch (err) {
             vscode.window.showErrorMessage(`JavaFlow error: ${(err as Error).message}`);
