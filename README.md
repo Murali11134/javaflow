@@ -15,9 +15,11 @@ The extension is designed for quick code exploration, onboarding, and high-level
 - Extract **enum constants** in declaration order.
 - Detect **nested and static nested classes** (including builder pattern classes) with correct parent–child links.
 - Parse **generic class declarations** such as `Container<T>` and `Repository<T, ID>`.
-- Show simple method call references and inheritance/interface details.
+- Show inheritance (`extends`) and implemented interface details.
 - Generate plain-English summaries from Javadoc or naming patterns (NLP).
-- Search, expand all, collapse all, fit to screen, and export the mind map as SVG.
+- Search with **prev/next navigation**, node highlighting, and automatic ancestor unfolding. Supports Enter / Shift+Enter keyboard shortcuts.
+- Expand all, collapse all, fit to screen, and export the mind map as SVG.
+- Open **multiple mindmap panels simultaneously** — compare two classes or packages side by side.
 - All Markmap and D3 assets are **bundled locally** — works fully offline, no CDN required.
 - Configure whether private members and NLP summaries are shown.
 
@@ -33,12 +35,19 @@ javaflow/
 |   |   `-- summarizer.ts
 |   |-- mindmap/
 |   |   `-- mindmapGenerator.ts
+|   |-- analysis/
+|   |   `-- workspaceIndex.ts
 |   `-- webview/
 |       `-- mindmapPanel.ts
+|-- media/
+|   |-- d3.min.js
+|   |-- markmap-lib.js
+|   |-- markmap-view.js
+|   `-- demo.gif
+|-- scripts/
+|   `-- bundle-media.js
 |-- package.json
-|-- package-lock.json
 |-- tsconfig.json
-|-- .gitignore
 `-- .vscodeignore
 ```
 
@@ -56,18 +65,18 @@ Main responsibilities:
 
 ### `src/parser/javaParser.ts`
 
-This file contains the Java parsing logic. It uses regular expressions and brace walking to extract useful information from Java source code.
+This file contains the Java parsing logic. It uses [java-parser](https://www.npmjs.com/package/java-parser) — a full CST (Concrete Syntax Tree) parser based on chevrotain — to accurately extract information from Java source code. This replaces an earlier regex-based approach and handles all standard Java syntax correctly.
 
 It extracts:
 
 - Package name and imports
-- Classes, interfaces, enums, and generic class declarations (`Container<T>`)
+- Classes, interfaces, enums (including generic declarations such as `Container<T>`)
 - Class-level annotations including parameterised forms (`@Table(name="users")`)
 - Enum constants in declaration order
 - Constructors, fields, and methods with visibility modifiers
 - Nested and static nested classes with correct parent–child links
 - Inheritance (`extends`) and implemented interfaces
-- Javadoc comments and simple method call references
+- Javadoc comments
 
 ### `src/nlp/summarizer.ts`
 
@@ -97,11 +106,12 @@ This file creates and manages the VS Code webview used to display the interactiv
 
 Toolbar actions include:
 
-- Expand all
-- Collapse all
-- Fit to screen
-- Search nodes
-- Export as SVG
+- **Expand all** / **Collapse all** — walks the live node tree and calls `renderData()` directly
+- **Fit to screen**
+- **Search** — finds matching nodes, shows `X / Y` count, navigates with Prev/Next buttons or Enter/Shift+Enter, highlights the match, unfolds ancestors, and pans the viewport to it
+- **Export as SVG**
+
+Multiple panels can be open at the same time. Each unique file or folder path gets its own panel; re-invoking on the same source reveals and refreshes the existing panel.
 
 ## Requirements
 
@@ -183,9 +193,10 @@ JavaFlow contributes the following VS Code settings:
 
 ## Current Limitations
 
-- Java parsing is regex-based, so some complex syntax (records, sealed classes, lambdas, deeply nested generics) may not be handled correctly.
+- Records, sealed classes, and text blocks are parsed structurally but not yet surfaced in the mindmap output.
+- Method call graph (`callsTo`) is not yet extracted by the CST parser — all methods show an empty call list.
 - The folder scan is capped at 200 Java files.
-- The test suite covers core parser and mind map generation behaviour; broader edge-case coverage is still needed.
+- The test suite covers core parser and mindmap generation behaviour; broader edge-case coverage is still needed.
 - Template-based NLP summaries are helpful but are not true semantic code understanding.
 
 ## Development Scripts
@@ -210,12 +221,12 @@ Compiles the extension and runs the basic test suite from `src/test/runTest.ts`.
 
 ## Suggested Improvements
 
-- Replace the regex parser with a real Java AST parser for full syntax coverage.
-- Add support for records, sealed classes, and other modern Java syntax.
-- Expand unit tests for parser behaviour, summary generation, and mind map generation.
+- Surface records and sealed classes in the mindmap output.
+- Implement method call graph extraction using the CST (walk method bodies for `MethodInvocation` nodes).
+- Expand unit tests for parser behaviour, summary generation, and mindmap generation.
 - Improve folder scanning for large Java projects (beyond the 200-file cap).
-- Add marketplace publishing instructions and a VS Code extension badge.
+- Publish to the VS Code Marketplace and add an extension badge to this README.
 
 ## Project Status
 
-JavaFlow is currently an early-stage prototype. It is suitable for experimenting with Java code visualization and extension development, but it needs stronger parsing, tests, documentation, and webview hardening before production use.
+JavaFlow is a functional VS Code extension with a solid CST-based Java parser, interactive mindmap rendering, multi-panel support, and working search navigation. It is ready for daily use on standard Java projects. The main gaps before a full marketplace release are call-graph extraction, records/sealed class output, and broader test coverage.
