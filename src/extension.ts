@@ -1,9 +1,14 @@
 /**
- * JavaFlow — VS Code Extension Entry Point
+ * JavaFlow — VS Code Extension Entry Point (v2)
  *
  * Registers:
- *   • javaflow.showMindmap        — single Java file → detailed mindmap
+ *   • javaflow.showMindmap          — single Java file → detailed mindmap
  *   • javaflow.showMindmapForFolder — folder → package overview mindmap
+ *
+ * v2 changes:
+ *   - Passes all classes in the file (not just the first) so nested class
+ *     relationships and cross-method call resolution work in single-file view.
+ *   - Builds a WorkspaceIndex over all parsed classes for folder view.
  */
 
 import * as vscode from 'vscode';
@@ -12,6 +17,7 @@ import * as path from 'path';
 import { parseJavaFile } from './parser/javaParser';
 import { generateClassMindmap, generateFolderMindmap, MindmapOptions } from './mindmap/mindmapGenerator';
 import { MindmapPanel } from './webview/mindmapPanel';
+import { WorkspaceIndex } from './analysis/workspaceIndex';
 
 // ─────────────────────────────────────────────────────────────────
 // Helpers
@@ -21,8 +27,8 @@ function getOptions(): MindmapOptions {
   const cfg = vscode.workspace.getConfiguration('javaflow');
   return {
     showPrivateMembers: cfg.get<boolean>('showPrivateMembers', false),
-    nlpSummaries: cfg.get<boolean>('nlpSummaries', true),
-    maxDepth: cfg.get<number>('maxDepth', 3)
+    nlpSummaries:       cfg.get<boolean>('nlpSummaries', true),
+    maxDepth:           cfg.get<number>('maxDepth', 3)
   };
 }
 
@@ -55,40 +61,31 @@ export function activate(context: vscode.ExtensionContext): void {
   const singleFileCmd = vscode.commands.registerCommand(
     'javaflow.showMindmap',
     async (uri?: vscode.Uri) => {
-      // Resolve file URI: from right-click, editor context, or active editor
-      let fileUri = uri;
-      if (!fileUri) {
-        fileUri = vscode.window.activeTextEditor?.document.uri;
-      }
+      let fileUri = uri ?? vscode.window.activeTextEditor?.document.uri;
       if (!fileUri || !fileUri.fsPath.endsWith('.java')) {
         vscode.window.showWarningMessage('JavaFlow: Please open or select a .java file first.');
         return;
       }
 
       await vscode.window.withProgress(
-        {
-          location: vscode.ProgressLocation.Notification,
-          title: 'JavaFlow: Generating mindmap…',
-          cancellable: false
-        },
+        { location: vscode.ProgressLocation.Notification, title: 'JavaFlow: Generating mindmap…', cancellable: false },
         async () => {
           try {
-            const source = fs.readFileSync(fileUri!.fsPath, 'utf-8');
+            const source  = fs.readFileSync(fileUri!.fsPath, 'utf-8');
             const classes = parseJavaFile(source, fileUri!.fsPath);
 
             if (classes.length === 0) {
-              vscode.window.showWarningMessage(
-                'JavaFlow: No classes found in this file. Make sure it is valid Java.'
-              );
+              vscode.window.showWarningMessage('JavaFlow: No classes found. Make sure the file is valid Java.');
               return;
             }
 
-            const opts = getOptions();
-            // If multiple classes in one file, show the first (primary) class
-            // and include nested ones as sub-sections
-            const primary = classes[0];
-            const markdown = generateClassMindmap(primary, opts);
-            const title = path.basename(fileUri!.fsPath, '.java');
+            const opts  = getOptions();
+            // Build index over all classes in this file (enables nested class links + call resolution)
+            const index = new WorkspaceIndex(classes);
+            // Primary class = first top-level class (parentClass === null), or first class found
+            const primary = classes.find(c => c.parentClass === null) ?? classes[0];
+            const markdown = generateClassMindmap(primary, opts, classes, index);
+            const title    = path.basename(fileUri!.fsPath, '.java');
 
             MindmapPanel.createOrShow(context.extensionUri, markdown, title);
           } catch (err) {
@@ -103,12 +100,8 @@ export function activate(context: vscode.ExtensionContext): void {
   const folderCmd = vscode.commands.registerCommand(
     'javaflow.showMindmapForFolder',
     async (uri?: vscode.Uri) => {
-      let folderPath: string | undefined;
-
-      if (uri) {
-        folderPath = uri.fsPath;
-      } else {
-        // Fallback: workspace root
+      let folderPath: string | undefined = uri?.fsPath;
+      if (!folderPath) {
         const folders = vscode.workspace.workspaceFolders;
         if (!folders || folders.length === 0) {
           vscode.window.showWarningMessage('JavaFlow: No folder selected and no workspace open.');
@@ -118,20 +111,14 @@ export function activate(context: vscode.ExtensionContext): void {
       }
 
       await vscode.window.withProgress(
-        {
-          location: vscode.ProgressLocation.Notification,
-          title: 'JavaFlow: Scanning Java files…',
-          cancellable: false
-        },
+        { location: vscode.ProgressLocation.Notification, title: 'JavaFlow: Scanning Java files…', cancellable: false },
         async (progress) => {
           try {
             progress.report({ message: 'Finding .java files…' });
             const javaFiles = collectJavaFiles(folderPath!);
 
             if (javaFiles.length === 0) {
-              vscode.window.showWarningMessage(
-                'JavaFlow: No .java files found in this folder.'
-              );
+              vscode.window.showWarningMessage('JavaFlow: No .java files found in this folder.');
               return;
             }
 
@@ -140,8 +127,7 @@ export function activate(context: vscode.ExtensionContext): void {
             for (const fp of javaFiles) {
               try {
                 const source = fs.readFileSync(fp, 'utf-8');
-                const parsed = parseJavaFile(source, fp);
-                allClasses.push(...parsed);
+                allClasses.push(...parseJavaFile(source, fp));
               } catch { /* skip unparseable files */ }
             }
 
@@ -150,10 +136,13 @@ export function activate(context: vscode.ExtensionContext): void {
               return;
             }
 
-            progress.report({ message: 'Building mindmap…' });
-            const opts = getOptions();
+            progress.report({ message: 'Building workspace index…' });
+            const index = new WorkspaceIndex(allClasses);
+
+            progress.report({ message: 'Generating mindmap…' });
+            const opts       = getOptions();
             const folderName = path.basename(folderPath!);
-            const markdown = generateFolderMindmap(allClasses, opts, folderName);
+            const markdown   = generateFolderMindmap(allClasses, opts, folderName, index);
 
             MindmapPanel.createOrShow(
               context.extensionUri,
