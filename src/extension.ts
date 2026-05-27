@@ -80,12 +80,10 @@ export function activate(context: vscode.ExtensionContext): void {
             }
 
             const opts  = getOptions();
-            // Build index over all classes in this file (enables nested class links + call resolution)
             const index = new WorkspaceIndex(classes);
-            // Primary class = first top-level class (parentClass === null), or first class found
             const primary = classes.find(c => c.parentClass === null) ?? classes[0];
-            const markdown = generateClassMindmap(primary, opts, classes, index);
             const title    = path.basename(fileUri!.fsPath, '.java');
+            const markdown = generateClassMindmap(primary, opts, classes, index, title);
 
             MindmapPanel.createOrShow(context.extensionUri, markdown, title, fileUri!.fsPath);
           } catch (err) {

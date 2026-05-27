@@ -60,16 +60,19 @@ export class MindmapPanel {
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
 
     this._panel.webview.onDidReceiveMessage(
-      message => {
+      async message => {
         switch (message.command) {
-          case 'alert':
-            vscode.window.showInformationMessage(message.text);
-            break;
-          case 'openFile':
-            vscode.workspace.openTextDocument(message.path).then(doc => {
-              vscode.window.showTextDocument(doc);
+          case 'exportSvg': {
+            const uri = await vscode.window.showSaveDialog({
+              defaultUri: vscode.Uri.file('javaflow-mindmap.svg'),
+              filters: { 'SVG Image': ['svg'] }
             });
+            if (uri) {
+              await vscode.workspace.fs.writeFile(uri, Buffer.from(message.svg, 'utf-8'));
+              vscode.window.showInformationMessage(`Mindmap saved to ${uri.fsPath}`);
+            }
             break;
+          }
         }
       },
       null,
@@ -285,6 +288,7 @@ export class MindmapPanel {
 </div>
 
 <script nonce="${nonce}">
+const vscodeApi = acquireVsCodeApi();
 (async () => {
   const markdown = \`${escaped}\`;
 
@@ -349,13 +353,7 @@ export class MindmapPanel {
 
   document.getElementById('btn-export').addEventListener('click', () => {
     const svg = document.getElementById('mindmap');
-    const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'javaflow-mindmap.svg';
-    a.click();
-    URL.revokeObjectURL(url);
+    vscodeApi.postMessage({ command: 'exportSvg', svg: svg.outerHTML });
   });
 
   const searchBar   = document.getElementById('search-bar');

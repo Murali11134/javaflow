@@ -195,13 +195,24 @@ export function generateClassMindmap(
   cls: JavaClass,
   opts: MindmapOptions,
   allClasses?: JavaClass[],
-  index?: WorkspaceIndex
+  index?: WorkspaceIndex,
+  rootLabel?: string
 ): string {
-  // Build a local index from the file's classes if none provided
-  const idx = index ?? (allClasses ? new WorkspaceIndex(allClasses) : undefined);
-
+  const all = allClasses ?? [cls];
+  const idx = index ?? new WorkspaceIndex(all);
+  const topLevel = all.filter(c => c.parentClass === null);
   const lines: string[] = [];
-  renderClass(cls, opts, lines, 1, idx);
+
+  if (topLevel.length > 1 && rootLabel) {
+    // Multiple sibling top-level classes in one file — use filename as root
+    lines.push(`# ☕ ${rootLabel}`);
+    for (const topCls of topLevel) {
+      renderClass(topCls, opts, lines, 2, idx);
+    }
+  } else {
+    renderClass(cls, opts, lines, 1, idx);
+  }
+
   return lines.join('\n');
 }
 
