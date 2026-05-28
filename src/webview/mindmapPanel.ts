@@ -95,7 +95,7 @@ export class MindmapPanel {
 
   private _update(markdownContent: string, title: string): void {
     this._panel.title = `☕ ${title} — JavaFlow`;
-    this._panel.webview.html = this._getHtmlContent(markdownContent);
+    this._panel.webview.html = this._getHtmlContent(markdownContent, title);
   }
 
   private _mediaUri(filename: string): vscode.Uri {
@@ -104,7 +104,8 @@ export class MindmapPanel {
     );
   }
 
-  private _getHtmlContent(markdownContent: string): string {
+  private _getHtmlContent(markdownContent: string, title: string): string {
+    const escapedTitle = title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const escaped = markdownContent
       .replace(/\\/g, '\\\\')
       .replace(/`/g, '\\`')
@@ -254,7 +255,7 @@ export class MindmapPanel {
 
 <!-- Toolbar -->
 <div id="toolbar">
-  <h2 id="title-text">☕ JavaFlow Mindmap</h2>
+  <h2 id="title-text">☕ ${escapedTitle}</h2>
   <button class="btn" id="btn-expand-all" title="Expand all nodes">Expand All</button>
   <button class="btn" id="btn-collapse-all" title="Collapse all nodes">Collapse All</button>
   <button class="btn" id="btn-fit" title="Fit to screen">⊞ Fit</button>
@@ -375,26 +376,21 @@ const vscodeApi = acquireVsCodeApi();
 
   let matches = [];
   let matchIndex = -1;
+  let cachedParentMap = null;
 
   function collectMatches(q) {
     matches = [];
+    cachedParentMap = null;
     if (!mm?.state?.data) { return; }
-    function walk(node) {
-      const plain = (node.content || '').replace(/<[^>]*>/g, '').toLowerCase();
-      if (plain.includes(q)) { matches.push(node); }
-      if (node.children) { node.children.forEach(walk); }
-    }
-    walk(mm.state.data);
-  }
-
-  function buildParentMap() {
     const map = new Map();
     function walk(node, parent) {
+      const plain = (node.content || '').replace(/<[^>]*>/g, '').toLowerCase();
+      if (plain.includes(q)) { matches.push(node); }
       if (parent && node.state?.id != null) { map.set(node.state.id, parent); }
       if (node.children) { node.children.forEach(c => walk(c, node)); }
     }
     walk(mm.state.data, null);
-    return map;
+    cachedParentMap = map;
   }
 
   async function goToMatch(idx) {
@@ -403,7 +399,7 @@ const vscodeApi = acquireVsCodeApi();
     const node = matches[matchIndex];
 
     // Unfold all ancestors so the matched node is visible
-    const parentMap = buildParentMap();
+    const parentMap = cachedParentMap ?? new Map();
     let ancestor = node.state?.id != null ? parentMap.get(node.state.id) : undefined;
     while (ancestor) {
       if (ancestor.payload) { ancestor.payload.fold = 0; } else { ancestor.payload = { fold: 0 }; }

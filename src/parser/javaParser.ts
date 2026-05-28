@@ -306,25 +306,12 @@ function processClassBodyDecls(
   for (const decl of decls) {
     const ctx = decl.children ?? {};
     if (ctx.constructorDeclaration) {
-      methods.push(parseCtor(ctx.constructorDeclaration[0], source));
-    }
-    // Static initializer blocks: static { ... }
-    if (ctx.staticInitializer) {
-      const block = kid(ctx.staticInitializer[0].children, 'block');
-      if (block) {
-        const calls = extractCallsTo(block);
-        if (calls.length > 0) {
-          methods.push({
-            name: 'static', returnType: '', parameters: [],
-            visibility: 'package', isStatic: true, isAbstract: false,
-            annotations: [], javadoc: '', callsTo: calls,
-          });
-        }
-      }
+      const ctor = parseCtor(ctx.constructorDeclaration[0], source);
+      if (ctor.name) { methods.push(ctor); }
     }
     const mem = kid(ctx, 'classMemberDeclaration')?.children ?? {};
     if (mem.fieldDeclaration)   { fields.push(...parseFields(mem.fieldDeclaration[0], source, 'fieldModifier')); }
-    if (mem.methodDeclaration)  { methods.push(parseMethod(mem.methodDeclaration[0], source, 'methodModifier')); }
+    if (mem.methodDeclaration)  { const m = parseMethod(mem.methodDeclaration[0], source, 'methodModifier'); if (m.name) { methods.push(m); } }
     if (mem.classDeclaration)   { nested.push(...processClassDecl(mem.classDeclaration[0], className, source, pkgName, imports, filePath)); }
     if (mem.interfaceDeclaration) { nested.push(...processInterfaceDecl(mem.interfaceDeclaration[0], className, source, pkgName, imports, filePath)); }
   }
@@ -344,9 +331,8 @@ function processInterfaceBodyDecls(
       });
     }
     if (ctx.interfaceMethodDeclaration) {
-      // Interface methods are implicitly public
       const m = parseMethod(ctx.interfaceMethodDeclaration[0], source, 'interfaceMethodModifier');
-      methods.push({ ...m, visibility: m.visibility === 'package' ? 'public' : m.visibility });
+      if (m.name) { methods.push({ ...m, visibility: m.visibility === 'package' ? 'public' : m.visibility }); }
     }
     if (ctx.classDeclaration)            { nested.push(...processClassDecl(ctx.classDeclaration[0], ifaceName, source, pkgName, imports, filePath)); }
     if (ctx.interfaceDeclaration)        { nested.push(...processInterfaceDecl(ctx.interfaceDeclaration[0], ifaceName, source, pkgName, imports, filePath)); }
@@ -491,11 +477,24 @@ function processInterfaceDecl(
     const ac   = annotDecl.children ?? {};
     const name = kids(kid(ac, 'typeIdentifier')?.children, 'Identifier')[0]?.image ?? '';
     if (!name) { return []; }
+    const bodyDecls = kids(kid(ac, 'annotationTypeBody')?.children, 'annotationTypeElementDeclaration');
+    const methods: JavaMethod[] = bodyDecls.flatMap((decl: any) => {
+      const rest = kid(decl.children ?? {}, 'annotationTypeElementRest');
+      if (!rest) { return []; }
+      const rc = rest.children ?? {};
+      const elemName = kids(rc, 'Identifier')[0]?.image ?? '';
+      if (!elemName) { return []; }
+      return [{
+        name: elemName, returnType: flatten(kid(rc, 'unannType')).trim(),
+        parameters: [], visibility: 'public', isStatic: false,
+        isAbstract: false, annotations: [], javadoc: '', callsTo: [],
+      } as JavaMethod];
+    });
     return [{
       name, kind: 'annotation', parentClass,
       visibility: mods.visibility, isAbstract: false,
       annotations: mods.annotations, superClass: null, interfaces: [],
-      fields: [], methods: [], enumConstants: [], nestedClasses: [],
+      fields: [], methods, enumConstants: [], nestedClasses: [],
       javadoc: findJavadoc(source, startOf(ifaceDeclNode)),
       packageName: pkgName, imports, filePath,
     }];

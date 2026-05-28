@@ -51,7 +51,6 @@ function collectJavaFiles(dirPath: string, max = 200): string[] {
 // ─────────────────────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext): void {
-  console.log('JavaFlow extension activated');
 
   // ── Command: Show Mindmap for a single Java file ──────────────
   const singleFileCmd = vscode.commands.registerCommand(

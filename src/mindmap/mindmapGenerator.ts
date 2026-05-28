@@ -128,7 +128,8 @@ function renderClass(
       // Call graph — resolved if index available, raw names otherwise
       if (method.callsTo.length > 0 && opts.maxDepth > 0) {
         if (index) {
-          const chain = index.getCallChain(cls.name, method.name, opts.maxDepth);
+          const clsFqn = cls.packageName ? `${cls.packageName}.${cls.name}` : cls.name;
+          const chain = index.getCallChain(clsFqn, method.name, opts.maxDepth);
           if (chain.length > 0) {
             lines.push(`${h(headingLevel + 3)} 📞 Calls`);
             renderCallChain(chain, lines, headingLevel + 4, 8);
@@ -147,7 +148,8 @@ function renderClass(
 
   // Nested classes — rendered recursively one level deeper
   if (index && cls.nestedClasses.length > 0) {
-    const children = index.nestedClassesOf(cls.name);
+    const clsFqn = cls.packageName ? `${cls.packageName}.${cls.name}` : cls.name;
+    const children = index.nestedClassesOf(clsFqn);
     if (children.length > 0) {
       lines.push(`${h(headingLevel + 1)} 🔲 Inner Classes`);
       for (const child of children) {
@@ -269,6 +271,7 @@ export function generateFolderMindmap(
         lines.push(`#### 📝 ${cls.annotations.join(' ')}`);
       }
       if (cls.superClass) { lines.push(`#### extends ${cls.superClass}`); }
+      if (cls.interfaces.length > 0) { lines.push(`#### implements ${cls.interfaces.join(', ')}`); }
       if (cls.enumConstants.length > 0) {
         const shown = cls.enumConstants.slice(0, 6);
         const more  = cls.enumConstants.length > 6 ? ` …+${cls.enumConstants.length - 6}` : '';
@@ -312,7 +315,7 @@ export function generateFolderMindmap(
           }
           // Resolved call targets (one level, capped at 4)
           if (m.callsTo.length > 0 && opts.maxDepth > 0) {
-            const refs = idx.resolveCallsTo(m.callsTo, cls.name).slice(0, 4);
+            const refs = idx.resolveCallsTo(m.callsTo, cls.packageName ? `${cls.packageName}.${cls.name}` : cls.name).slice(0, 4);
             for (const ref of refs) {
               const simpleName = ref.className !== '?' ? (ref.className.split('.').pop() ?? ref.className) : null;
               lines.push(`###### 📞 ${simpleName ? simpleName + '.' : ''}${ref.methodName}()`);
