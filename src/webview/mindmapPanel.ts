@@ -7,7 +7,6 @@
  */
 
 import * as vscode from 'vscode';
-import * as path from 'path';
 import * as crypto from 'crypto';
 
 export class MindmapPanel {
@@ -30,7 +29,8 @@ export class MindmapPanel {
     const existing = MindmapPanel._openPanels.get(key);
     if (existing) {
       existing._panel.reveal(column);
-      existing._update(markdownContent, title);
+      existing._panel.title = `☕ ${title} — JavaFlow`;
+      existing._panel.webview.postMessage({ command: 'updateContent', markdown: markdownContent, title });
       return;
     }
 
@@ -347,6 +347,17 @@ const vscodeApi = acquireVsCodeApi();
   document.getElementById('loading').style.display = 'none';
   document.getElementById('btn-export').disabled = false;
 
+  window.addEventListener('message', async (event) => {
+    const msg = event.data;
+    if (msg.command !== 'updateContent') { return; }
+    try {
+      const { root: newRoot } = transformer.transform(msg.markdown);
+      mm.state.data = newRoot;
+      document.getElementById('title-text').textContent = '☕ ' + msg.title;
+      await mm.renderData();
+    } catch (_) {}
+  });
+
   document.getElementById('btn-fit').addEventListener('click', () => { try { mm.fit(); } catch (_) {} });
 
   document.getElementById('btn-refresh').addEventListener('click', () => {
@@ -372,8 +383,8 @@ const vscodeApi = acquireVsCodeApi();
       if (node.children) { node.children.forEach(collapseAll); }
     }
     // Collapse root's children but keep root itself visible so the tree isn't blank.
-    const root = mm.state.data;
-    if (root.children) { root.children.forEach(collapseAll); }
+    const treeRoot = mm.state.data;
+    if (treeRoot.children) { treeRoot.children.forEach(collapseAll); }
     mm.renderData().then(() => { try { mm.fit(); } catch (_) {} }).catch(() => {});
   });
 
@@ -460,11 +471,13 @@ const vscodeApi = acquireVsCodeApi();
   }
 
   document.getElementById('btn-search').addEventListener('click', () => {
-    searchBar.classList.toggle('visible');
-    if (searchBar.classList.contains('visible')) { searchInput.focus(); }
+    const nowVisible = searchBar.classList.toggle('visible');
+    document.getElementById('btn-search').classList.toggle('active', nowVisible);
+    if (nowVisible) { searchInput.focus(); }
   });
   document.getElementById('btn-search-close').addEventListener('click', async () => {
     searchBar.classList.remove('visible');
+    document.getElementById('btn-search').classList.remove('active');
     searchInput.value = '';
     searchCount.textContent = '';
     matches = [];
@@ -490,7 +503,7 @@ const vscodeApi = acquireVsCodeApi();
     collectMatches(q);
     applyInlineHighlights(q);
     if (matches.length) {
-      goToMatch(0);
+      await goToMatch(0);
     } else {
       searchCount.textContent = 'No matches';
       try { mm.renderData().catch(() => {}); } catch (_) {}
@@ -498,8 +511,8 @@ const vscodeApi = acquireVsCodeApi();
     }
   });
 
-  searchInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.shiftKey ? goToMatch(matchIndex - 1) : goToMatch(matchIndex + 1); }
+  searchInput.addEventListener('keydown', async e => {
+    if (e.key === 'Enter') { e.shiftKey ? await goToMatch(matchIndex - 1) : await goToMatch(matchIndex + 1); }
     if (e.key === 'Escape') { document.getElementById('btn-search-close').click(); }
   });
 

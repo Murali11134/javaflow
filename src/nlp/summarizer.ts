@@ -70,7 +70,8 @@ export function summarizeMethod(method: JavaMethod, parentClass: JavaClass): str
     const prop = decamelize(method.name.slice(3));
     parts.push(`Sets the ${prop}.`);
   } else if (/^is[A-Z]|^has[A-Z]|^can[A-Z]/.test(method.name)) {
-    const prop = decamelize(method.name.slice(2));
+    const prefixLen = method.name.startsWith('is') ? 2 : 3;
+    const prop = decamelize(method.name.slice(prefixLen));
     parts.push(`Checks whether ${prop}.`);
   } else if (/^on[A-Z]/.test(method.name)) {
     const event = decamelize(method.name.slice(2));

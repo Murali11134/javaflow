@@ -236,7 +236,7 @@ function extractCallsTo(bodyNode: any): string[] {
     // flatten gives "java.util.ArrayList" or "ArrayList"; strip generics, take last segment
     const typeName   = flatten(typeNode).replace(/<[\s\S]*$/, '').trim();
     const simpleName = typeName.split('.').pop();
-    if (simpleName) { calls.add(simpleName); }
+    if (simpleName) { calls.add('new ' + simpleName); }
   }
 
   function walk(node: any): void {
@@ -488,7 +488,7 @@ function processInterfaceDecl(
       return [{
         name: elemName, returnType: flatten(kid(rc, 'unannType')).trim(),
         parameters: [], visibility: 'public', isStatic: false,
-        isAbstract: false, annotations: [], javadoc: '', callsTo: [],
+        isAbstract: false, annotations: [], javadoc: findJavadoc(source, startOf(decl)), callsTo: [],
       } as JavaMethod];
     });
     return [{

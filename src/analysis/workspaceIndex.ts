@@ -47,17 +47,24 @@ export class WorkspaceIndex {
    */
   private methodOwners = new Map<string, string[]>();
 
+  /** parentFqn → direct nested JavaClass list, for reliable nestedClassesOf lookups. */
+  private parentMap = new Map<string, JavaClass[]>();
+
   constructor(classes: JavaClass[]) {
-    // First pass: register every class by FQN and populate methodOwners with FQNs.
+    // First pass: register every class by FQN and populate methodOwners with Sets (no duplicates).
+    const methodOwnerSets = new Map<string, Set<string>>();
     for (const cls of classes) {
       const fqn = cls.packageName ? `${cls.packageName}.${cls.name}` : cls.name;
       this.classMap.set(fqn, cls);
       for (const method of cls.methods) {
-        const owners = this.methodOwners.get(method.name) ?? [];
-        owners.push(fqn);
-        this.methodOwners.set(method.name, owners);
+        const s = methodOwnerSets.get(method.name);
+        if (s) { s.add(fqn); } else { methodOwnerSets.set(method.name, new Set([fqn])); }
       }
     }
+    for (const [name, set] of methodOwnerSets) {
+      this.methodOwners.set(name, [...set]);
+    }
+
     // Second pass: add a simple-name alias only when globally unambiguous.
     // Two-pass approach makes this deterministic regardless of input order.
     const simpleCount = new Map<string, number>();
@@ -68,6 +75,20 @@ export class WorkspaceIndex {
       if (simpleCount.get(cls.name) === 1) {
         this.classMap.set(cls.name, cls);
       }
+    }
+
+    // Third pass: build parentMap so nestedClassesOf works even when simple-name
+    // aliases are absent (e.g. two classes share a name like "Builder").
+    for (const cls of classes) {
+      if (cls.parentClass === null) { continue; }
+      const fqn = cls.packageName ? `${cls.packageName}.${cls.name}` : cls.name;
+      const parentFqn = cls.packageName
+        ? `${cls.packageName}.${cls.parentClass}`
+        : cls.parentClass;
+      const key = this.classMap.has(parentFqn) ? parentFqn : cls.parentClass;
+      const children = this.parentMap.get(key) ?? [];
+      children.push(cls);
+      this.parentMap.set(key, children);
     }
   }
 
@@ -171,6 +192,8 @@ export class WorkspaceIndex {
 
   /** All direct children of a given class name. */
   nestedClassesOf(className: string): JavaClass[] {
+    const byParent = this.parentMap.get(className);
+    if (byParent) { return byParent; }
     return (this.classMap.get(className)?.nestedClasses ?? [])
       .map(n => this.classMap.get(n))
       .filter((c): c is JavaClass => c !== undefined);

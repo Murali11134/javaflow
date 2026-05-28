@@ -38,7 +38,7 @@ function collectJavaFiles(dirPath: string, max = 200): string[] {
         if (e.name.startsWith('.') || ['node_modules','target','build','out','dist','.gradle'].includes(e.name)) { continue; }
         const full = path.join(p, e.name);
         if (e.isDirectory()) { walk(full); }
-        else if (e.isFile() && e.name.endsWith('.java')) { files.push(full); }
+        else if (e.isFile() && e.name.endsWith('.java')) { files.push(full); if (files.length >= max) { return; } }
       }
     } catch { /* skip unreadable dirs */ }
   }
@@ -109,13 +109,14 @@ export function activate(context: vscode.ExtensionContext): void {
         }
         folderPath = folders[0].uri.fsPath;
       }
+      const fp = folderPath;
 
       await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: 'JavaFlow: Scanning Java files…', cancellable: true },
         async (progress, token) => {
           try {
             progress.report({ message: 'Finding .java files…' });
-            const javaFiles = collectJavaFiles(folderPath!);
+            const javaFiles = collectJavaFiles(fp);
 
             if (javaFiles.length === 0) {
               vscode.window.showWarningMessage('JavaFlow: No .java files found in this folder.');
@@ -152,14 +153,14 @@ export function activate(context: vscode.ExtensionContext): void {
 
             progress.report({ message: 'Generating mindmap…' });
             const opts       = getOptions();
-            const folderName = path.basename(folderPath!);
+            const folderName = path.basename(fp);
             const markdown   = generateFolderMindmap(allClasses, opts, folderName, index);
 
             MindmapPanel.createOrShow(
               context.extensionUri,
               markdown,
               `${folderName} (${allClasses.length} classes)`,
-              folderPath!
+              fp
             );
           } catch (err) {
             vscode.window.showErrorMessage(`JavaFlow error: ${(err as Error).message}`);

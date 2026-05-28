@@ -30,6 +30,10 @@ function visEmoji(visibility: string): string {
   return visibility === 'public' ? '🔓' : '🔒';
 }
 
+function escHtml(s: string): string {
+  return s.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 /** Render one class node and its members into `lines`. `headingLevel` sets the # depth. */
 function renderClass(
   cls: JavaClass,
@@ -64,18 +68,18 @@ function renderClass(
   // NLP summary
   if (summary) {
     lines.push(`${h(headingLevel + 1)} 💡 Summary`);
-    lines.push(`${h(headingLevel + 2)} ${summary.classSummary}`);
+    lines.push(`${h(headingLevel + 2)} ${escHtml(summary.classSummary)}`);
   }
 
   // Hierarchy
   if (cls.superClass || cls.interfaces.length > 0) {
     lines.push(`${h(headingLevel + 1)} 🔗 Hierarchy`);
     if (cls.superClass) {
-      lines.push(`${h(headingLevel + 2)} extends ${cls.superClass}`);
+      lines.push(`${h(headingLevel + 2)} extends ${escHtml(cls.superClass)}`);
     }
     const ifaceLabel = cls.kind === 'interface' ? 'extends' : 'implements';
     for (const iface of cls.interfaces) {
-      lines.push(`${h(headingLevel + 2)} ${ifaceLabel} ${iface}`);
+      lines.push(`${h(headingLevel + 2)} ${ifaceLabel} ${escHtml(iface)}`);
     }
   }
 
@@ -96,11 +100,11 @@ function renderClass(
     for (const field of visibleFields) {
       const mods = [field.isStatic ? 'static' : '', field.isFinal ? 'final' : '']
         .filter(Boolean).join(' ');
-      const label = `${field.name} : ${field.type}${mods ? ` *(${mods})*` : ''}`;
+      const label = `${field.name} : ${escHtml(field.type)}${mods ? ` *(${mods})*` : ''}`;
       lines.push(`${h(headingLevel + 2)} ${visEmoji(field.visibility)} ${label}`);
       if (summary) {
         const desc = summary.fieldSummaries.get(field.name);
-        if (desc) { lines.push(`${h(headingLevel + 3)} ${desc}`); }
+        if (desc) { lines.push(`${h(headingLevel + 3)} ${escHtml(desc)}`); }
       }
     }
   }
@@ -112,9 +116,9 @@ function renderClass(
   if (visibleMethods.length > 0) {
     lines.push(`${h(headingLevel + 1)} ⚙️ Methods`);
     for (const method of visibleMethods) {
-      const params = method.parameters.map(p => `${p.name}: ${p.type}`).join(', ');
+      const params = method.parameters.map(p => `${p.name}: ${escHtml(p.type)}`).join(', ');
       const sig    = method.returnType
-        ? `${method.name}(${params}) : ${method.returnType}`
+        ? `${method.name}(${params}) : ${escHtml(method.returnType)}`
         : `${method.name}(${params})`;
       const annPrefix = method.annotations.length > 0
         ? method.annotations.join(' ') + ' '
@@ -123,7 +127,7 @@ function renderClass(
 
       if (summary) {
         const desc = summary.methodSummaries.get(`${method.name}|${method.parameters.map(p => p.type).join(',')}`);
-        if (desc) { lines.push(`${h(headingLevel + 3)} 💬 ${desc}`); }
+        if (desc) { lines.push(`${h(headingLevel + 3)} 💬 ${escHtml(desc)}`); }
       }
 
       // Call graph — resolved if index available, raw names otherwise
@@ -132,15 +136,13 @@ function renderClass(
           const clsFqn = cls.packageName ? `${cls.packageName}.${cls.name}` : cls.name;
           const chain = index.getCallChain(clsFqn, method.name, opts.maxDepth);
           if (chain.length > 0) {
-            lines.push(`${h(headingLevel + 3)} 📞 Calls`);
-            renderCallChain(chain, lines, headingLevel + 4, 8);
+            renderCallChain(chain, lines, headingLevel + 3, 8);
           }
         } else {
-          lines.push(`${h(headingLevel + 3)} 📞 Calls`);
           const shown = method.callsTo.slice(0, 8);
-          for (const call of shown) { lines.push(`${h(headingLevel + 4)} ${call}()`); }
+          for (const call of shown) { lines.push(`${h(headingLevel + 3)} 📞 ${call}()`); }
           if (method.callsTo.length > 8) {
-            lines.push(`${h(headingLevel + 4)} …and ${method.callsTo.length - 8} more`);
+            lines.push(`${h(headingLevel + 3)} …and ${method.callsTo.length - 8} more`);
           }
         }
       }
@@ -181,7 +183,8 @@ function renderClass(
   }
 }
 
-/** Recursively render a CallChainNode tree, honouring a max-node budget. */
+/** Recursively render a CallChainNode tree, honouring a max-node budget.
+ *  Returns -1 when the budget was exhausted (sentinel to suppress duplicate "…"). */
 function renderCallChain(
   nodes: CallChainNode[],
   lines: string[],
@@ -191,11 +194,12 @@ function renderCallChain(
   const h = (n: number) => '#'.repeat(Math.min(n, 6));
   let remaining = budget;
   for (const node of nodes) {
-    if (remaining <= 0) { lines.push(`${h(headingLevel)} …`); break; }
-    lines.push(`${h(headingLevel)} ${node.label}`);
+    if (remaining <= 0) { lines.push(`${h(headingLevel)} …`); return -1; }
+    lines.push(`${h(headingLevel)} 📞 ${node.label}`);
     remaining--;
     if (node.children.length > 0) {
       remaining = renderCallChain(node.children, lines, headingLevel + 1, remaining);
+      if (remaining < 0) { return -1; }
     }
   }
   return remaining;
@@ -267,12 +271,15 @@ export function generateFolderMindmap(
       const emoji   = KIND_EMOJI[cls.kind] ?? '🏛';
 
       lines.push(`### ${emoji} ${cls.name}`);
-      if (summary) { lines.push(`#### 💡 ${summary.classSummary}`); }
+      if (summary) { lines.push(`#### 💡 ${escHtml(summary.classSummary)}`); }
       if (cls.annotations.length > 0) {
         lines.push(`#### 📝 ${cls.annotations.join(' ')}`);
       }
-      if (cls.superClass) { lines.push(`#### extends ${cls.superClass}`); }
-      if (cls.interfaces.length > 0) { lines.push(`#### implements ${cls.interfaces.join(', ')}`); }
+      if (cls.superClass) { lines.push(`#### extends ${escHtml(cls.superClass)}`); }
+      if (cls.interfaces.length > 0) {
+        const ifaceLabel = cls.kind === 'interface' ? 'extends' : 'implements';
+        lines.push(`#### ${ifaceLabel} ${cls.interfaces.map(escHtml).join(', ')}`);
+      }
       if (cls.enumConstants.length > 0) {
         const shown = cls.enumConstants.slice(0, 6);
         const more  = cls.enumConstants.length > 6 ? ` …+${cls.enumConstants.length - 6}` : '';
@@ -295,20 +302,20 @@ export function generateFolderMindmap(
             const more  = nestedCls.enumConstants.length > 4 ? ` …+${nestedCls.enumConstants.length - 4}` : '';
             lines.push(`###### 🔢 ${shown.join(', ')}${more}`);
           }
-          const pubNested = nestedCls.methods.filter(m => m.visibility === 'public');
+          const pubNested = nestedCls.methods.filter(m => opts.showPrivateMembers || m.visibility === 'public');
           for (const m of pubNested.slice(0, 4)) {
-            lines.push(`###### ${m.name}(${m.parameters.map(p => p.type).join(', ')})`);
+            lines.push(`###### ${m.name}(${m.parameters.map(p => escHtml(p.type)).join(', ')})`);
           }
           if (pubNested.length > 4) { lines.push(`###### …+${pubNested.length - 4} more`); }
         }
       }
 
-      // Public methods (capped at 6)
-      const pubMethods = cls.methods.filter(m => m.visibility === 'public');
+      // Methods (capped at 6)
+      const pubMethods = cls.methods.filter(m => opts.showPrivateMembers || m.visibility === 'public');
       if (pubMethods.length > 0) {
         lines.push(`#### ⚙️ Methods (${pubMethods.length})`);
         for (const m of pubMethods.slice(0, 6)) {
-          const paramTypes = m.parameters.map(p => p.type).join(', ');
+          const paramTypes = m.parameters.map(p => escHtml(p.type)).join(', ');
           lines.push(`##### ${m.name}(${paramTypes})`);
           if (summary) {
             const desc = summary.methodSummaries.get(`${m.name}|${m.parameters.map(p => p.type).join(',')}`);
