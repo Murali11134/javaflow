@@ -234,7 +234,7 @@ export class MindmapPanel {
       border: 1px solid #45475a;
       border-radius: 6px;
       padding: 6px 10px;
-      z-index: 20;
+      z-index: 100;
       gap: 6px;
       align-items: center;
     }
@@ -259,7 +259,7 @@ export class MindmapPanel {
   <button class="btn" id="btn-collapse-all" title="Collapse all nodes">Collapse All</button>
   <button class="btn" id="btn-fit" title="Fit to screen">⊞ Fit</button>
   <button class="btn" id="btn-search" title="Search nodes">🔍 Search</button>
-  <button class="btn" id="btn-export" title="Export as SVG">↓ SVG</button>
+  <button class="btn" id="btn-export" title="Export as SVG" disabled>↓ SVG</button>
 </div>
 
 <!-- Legend -->
@@ -337,7 +337,7 @@ const vscodeApi = acquireVsCodeApi();
   document.getElementById('loading').style.display = 'none';
   document.getElementById('btn-export').disabled = false;
 
-  document.getElementById('btn-fit').addEventListener('click', () => mm.fit());
+  document.getElementById('btn-fit').addEventListener('click', () => { try { mm.fit(); } catch (_) {} });
 
   document.getElementById('btn-expand-all').addEventListener('click', () => {
     if (!mm?.state?.data) { return; }
@@ -348,7 +348,7 @@ const vscodeApi = acquireVsCodeApi();
       if (node.children) { node.children.forEach(expandNode); }
     }
     expandNode(mm.state.data);
-    mm.renderData().then(() => mm.fit());
+    mm.renderData().then(() => { try { mm.fit(); } catch (_) {} }).catch(() => {});
   });
 
   document.getElementById('btn-collapse-all').addEventListener('click', () => {
@@ -360,11 +360,10 @@ const vscodeApi = acquireVsCodeApi();
     // Collapse root's children but keep root itself visible so the tree isn't blank.
     const root = mm.state.data;
     if (root.children) { root.children.forEach(collapseAll); }
-    mm.renderData().then(() => mm.fit());
+    mm.renderData().then(() => { try { mm.fit(); } catch (_) {} }).catch(() => {});
   });
 
   const btnExport = document.getElementById('btn-export');
-  btnExport.disabled = true;   // enabled once Markmap finishes rendering
   btnExport.addEventListener('click', () => {
     const svg = document.getElementById('mindmap');
     vscodeApi.postMessage({ command: 'exportSvg', svg: svg.outerHTML });
@@ -391,7 +390,7 @@ const vscodeApi = acquireVsCodeApi();
   function buildParentMap() {
     const map = new Map();
     function walk(node, parent) {
-      if (parent && node.state) { map.set(node.state.id, parent); }
+      if (parent && node.state?.id != null) { map.set(node.state.id, parent); }
       if (node.children) { node.children.forEach(c => walk(c, node)); }
     }
     walk(mm.state.data, null);
@@ -405,10 +404,10 @@ const vscodeApi = acquireVsCodeApi();
 
     // Unfold all ancestors so the matched node is visible
     const parentMap = buildParentMap();
-    let ancestor = node.state ? parentMap.get(node.state.id) : undefined;
+    let ancestor = node.state?.id != null ? parentMap.get(node.state.id) : undefined;
     while (ancestor) {
       if (ancestor.payload) { ancestor.payload.fold = 0; } else { ancestor.payload = { fold: 0 }; }
-      ancestor = ancestor.state ? parentMap.get(ancestor.state.id) : undefined;
+      ancestor = ancestor.state?.id != null ? parentMap.get(ancestor.state.id) : undefined;
     }
 
     await mm.renderData();

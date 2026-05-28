@@ -79,7 +79,9 @@
         "javaflow.maxDepth": {
           "type": "number",
           "default": 3,
-          "description": "Maximum depth of call graph to traverse"
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Maximum depth of call graph to traverse (0 = disabled, max 10)"
         },
         "javaflow.showPrivateMembers": {
           "type": "boolean",

@@ -28,13 +28,14 @@ function getOptions(): MindmapOptions {
 }
 
 function collectJavaFiles(dirPath: string, max = 200): string[] {
+  if (max <= 0) { return []; }
   const files: string[] = [];
   function walk(p: string) {
     if (files.length >= max) { return; }
     try {
       const entries = fs.readdirSync(p, { withFileTypes: true });
       for (const e of entries) {
-        if (e.name.startsWith('.') || e.name === 'node_modules' || e.name === 'target' || e.name === 'build') { continue; }
+        if (e.name.startsWith('.') || ['node_modules','target','build','out','dist','.gradle'].includes(e.name)) { continue; }
         const full = path.join(p, e.name);
         if (e.isDirectory()) { walk(full); }
         else if (e.isFile() && e.name.endsWith('.java')) { files.push(full); }
@@ -66,10 +67,12 @@ export function activate(context: vscode.ExtensionContext): void {
         { location: vscode.ProgressLocation.Notification, title: 'JavaFlow: Generating mindmap…', cancellable: false },
         async () => {
           try {
-            // Prefer the live editor text so unsaved changes are reflected.
-            const activeDoc = vscode.window.activeTextEditor?.document;
-            const source = (activeDoc?.uri.fsPath === fileUri!.fsPath)
-              ? activeDoc.getText()
+            // Prefer live editor text (any open tab) so unsaved changes are reflected.
+            const openDoc = vscode.workspace.textDocuments.find(
+              d => d.uri.fsPath === fileUri!.fsPath
+            );
+            const source = openDoc
+              ? openDoc.getText()
               : fs.readFileSync(fileUri!.fsPath, 'utf-8');
             const classes = parseJavaFile(source, fileUri!.fsPath);
 
@@ -130,7 +133,8 @@ export function activate(context: vscode.ExtensionContext): void {
               if (token.isCancellationRequested) { return; }
               progress.report({ message: `Parsing file ${i + 1} of ${javaFiles.length}…`, increment: 100 / javaFiles.length });
               try {
-                const source = fs.readFileSync(javaFiles[i], 'utf-8');
+                const openDoc = vscode.workspace.textDocuments.find(d => d.uri.fsPath === javaFiles[i]);
+                const source = openDoc ? openDoc.getText() : fs.readFileSync(javaFiles[i], 'utf-8');
                 allClasses.push(...parseJavaFile(source, javaFiles[i]));
               } catch { failed++; }
             }

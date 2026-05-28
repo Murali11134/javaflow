@@ -126,10 +126,10 @@ function renderClass(
       }
 
       // Call graph — resolved if index available, raw names otherwise
-      if (method.callsTo.length > 0 && opts.maxDepth > 1) {
+      if (method.callsTo.length > 0 && opts.maxDepth > 0) {
         lines.push(`${h(headingLevel + 3)} 📞 Calls`);
         if (index) {
-          const chain = index.getCallChain(cls.name, method.name, opts.maxDepth - 1);
+          const chain = index.getCallChain(cls.name, method.name, opts.maxDepth);
           renderCallChain(chain, lines, headingLevel + 4, 8);
         } else {
           const shown = method.callsTo.slice(0, 8);
@@ -166,7 +166,7 @@ function renderClass(
     for (const [group, imps] of groups) {
       lines.push(`${h(headingLevel + 2)} ${group}`);
       for (const imp of imps.slice(0, 5)) {
-        lines.push(`${h(headingLevel + 3)} ${imp.split('.').pop()}`);
+        lines.push(`${h(headingLevel + 3)} ${imp.split('.').pop() ?? imp}`);
       }
       if (imps.length > 5) {
         lines.push(`${h(headingLevel + 3)} …+${imps.length - 5} more`);
@@ -222,7 +222,7 @@ export function generateClassMindmap(
       renderClass(topCls, opts, lines, 2, idx);
     }
   } else {
-    renderClass(cls, opts, lines, 1, idx);
+    renderClass(topLevel[0] ?? cls, opts, lines, 1, idx);
   }
 
   return lines.join('\n');
@@ -277,7 +277,7 @@ export function generateFolderMindmap(
         lines.push(`#### 🔲 Inner Classes`);
         for (const nestedName of cls.nestedClasses) {
           const nestedCls = idx.getClass(nestedName);
-          if (!nestedCls) { lines.push(`##### ${nestedName}`); continue; }
+          if (!nestedCls) { lines.push(`##### ${nestedName} *(unresolved)*`); continue; }
           const nestedEmoji = KIND_EMOJI[nestedCls.kind] ?? '🏛';
           lines.push(`##### ${nestedEmoji} ${nestedName}`);
           if (nestedCls.annotations.length > 0) {
@@ -308,7 +308,7 @@ export function generateFolderMindmap(
             if (desc) { lines.push(`###### ${desc}`); }
           }
           // Resolved call targets (one level, capped at 4)
-          if (m.callsTo.length > 0 && opts.maxDepth > 1) {
+          if (m.callsTo.length > 0 && opts.maxDepth > 0) {
             const refs = idx.resolveCallsTo(m.callsTo, cls.name).slice(0, 4);
             for (const ref of refs) {
               lines.push(`###### 📞 ${ref.className !== '?' ? ref.className + '.' : ''}${ref.methodName}()`);
