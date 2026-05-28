@@ -121,17 +121,20 @@ function renderClass(
       lines.push(`${h(headingLevel + 2)} ${visEmoji(method.visibility)} ${annPrefix}${sig}`);
 
       if (summary) {
-        const desc = summary.methodSummaries.get(`${method.name}|${method.parameters.length}`);
+        const desc = summary.methodSummaries.get(`${method.name}|${method.parameters.map(p => p.type).join(',')}`);
         if (desc) { lines.push(`${h(headingLevel + 3)} 💬 ${desc}`); }
       }
 
       // Call graph — resolved if index available, raw names otherwise
       if (method.callsTo.length > 0 && opts.maxDepth > 0) {
-        lines.push(`${h(headingLevel + 3)} 📞 Calls`);
         if (index) {
           const chain = index.getCallChain(cls.name, method.name, opts.maxDepth);
-          renderCallChain(chain, lines, headingLevel + 4, 8);
+          if (chain.length > 0) {
+            lines.push(`${h(headingLevel + 3)} 📞 Calls`);
+            renderCallChain(chain, lines, headingLevel + 4, 8);
+          }
         } else {
+          lines.push(`${h(headingLevel + 3)} 📞 Calls`);
           const shown = method.callsTo.slice(0, 8);
           for (const call of shown) { lines.push(`${h(headingLevel + 4)} ${call}()`); }
           if (method.callsTo.length > 8) {
@@ -304,14 +307,15 @@ export function generateFolderMindmap(
           const paramTypes = m.parameters.map(p => p.type).join(', ');
           lines.push(`##### ${m.name}(${paramTypes})`);
           if (summary) {
-            const desc = summary.methodSummaries.get(`${m.name}|${m.parameters.length}`);
+            const desc = summary.methodSummaries.get(`${m.name}|${m.parameters.map(p => p.type).join(',')}`);
             if (desc) { lines.push(`###### ${desc}`); }
           }
           // Resolved call targets (one level, capped at 4)
           if (m.callsTo.length > 0 && opts.maxDepth > 0) {
             const refs = idx.resolveCallsTo(m.callsTo, cls.name).slice(0, 4);
             for (const ref of refs) {
-              lines.push(`###### 📞 ${ref.className !== '?' ? ref.className + '.' : ''}${ref.methodName}()`);
+              const simpleName = ref.className !== '?' ? (ref.className.split('.').pop() ?? ref.className) : null;
+              lines.push(`###### 📞 ${simpleName ? simpleName + '.' : ''}${ref.methodName}()`);
             }
           }
         }

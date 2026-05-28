@@ -31,7 +31,8 @@ function decamelize(name: string): string {
 /** Strip @param / @return / @throws tags (including multi-line continuations) from Javadoc */
 function cleanJavadoc(doc: string): string {
   return doc
-    .replace(/@\w[\s\S]*?(?=@\w|$)/g, '')   // strip each tag block including its continuation lines
+    .replace(/\{@\w+\s*([^}]*)\}/g, '$1')   // unwrap inline tags: {@link Foo} → Foo, {@code x} → x
+    .replace(/@\w+[\s\S]*?(?=@\w+|$)/g, '') // strip block tags: @param, @return, @throws, etc.
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -219,7 +220,7 @@ export function buildClassSummary(cls: JavaClass): ClassSummary {
   const fieldSummaries = new Map<string, string>();
 
   for (const method of cls.methods) {
-    methodSummaries.set(`${method.name}|${method.parameters.length}`, summarizeMethod(method, cls));
+    methodSummaries.set(`${method.name}|${method.parameters.map(p => p.type).join(',')}`, summarizeMethod(method, cls));
   }
   for (const field of cls.fields) {
     fieldSummaries.set(field.name, summarizeField(field));

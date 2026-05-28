@@ -48,13 +48,13 @@ export class WorkspaceIndex {
   private methodOwners = new Map<string, string[]>();
 
   constructor(classes: JavaClass[]) {
-    // First pass: register every class by FQN and populate methodOwners.
+    // First pass: register every class by FQN and populate methodOwners with FQNs.
     for (const cls of classes) {
       const fqn = cls.packageName ? `${cls.packageName}.${cls.name}` : cls.name;
       this.classMap.set(fqn, cls);
       for (const method of cls.methods) {
         const owners = this.methodOwners.get(method.name) ?? [];
-        owners.push(cls.name);
+        owners.push(fqn);
         this.methodOwners.set(method.name, owners);
       }
     }
@@ -95,23 +95,28 @@ export class WorkspaceIndex {
    */
   resolveCallsTo(callsTo: string[], callerClassName: string): MethodRef[] {
     const callerCls = this.classMap.get(callerClassName);
+    // Compute the caller's FQN so self-call detection works whether callerClassName
+    // is a simple name or a full FQN.
+    const callerFqn = callerCls
+      ? (callerCls.packageName ? `${callerCls.packageName}.${callerCls.name}` : callerCls.name)
+      : callerClassName;
+
     return callsTo.map(name => {
-      const owners = this.resolveMethod(name);
+      const owners = this.resolveMethod(name); // owners are FQNs
       if (owners.length === 0) { return { className: '?', methodName: name }; }
 
       // Single owner — unambiguous
       if (owners.length === 1) { return { className: owners[0], methodName: name }; }
 
-      // Multiple owners: prefer parent class, then first non-self class, then self.
-      // Deprioritising self avoids false recursive loops where the caller happens
-      // to share a method name with a callee (e.g. OrderService.findById()
-      // calling orderRepository.findById() — both classes have findById).
-      if (callerCls?.parentClass && owners.includes(callerCls.parentClass)
-          && this.classMap.has(callerCls.parentClass)) {
-        return { className: callerCls.parentClass, methodName: name };
+      // Multiple owners: prefer parent class FQN, then first non-self FQN.
+      if (callerCls?.parentClass) {
+        const parentFqn = owners.find(
+          o => o === callerCls.parentClass || o.endsWith(`.${callerCls.parentClass}`)
+        );
+        if (parentFqn) { return { className: parentFqn, methodName: name }; }
       }
-      const nonSelf = owners.find(o => o !== callerClassName);
-      return { className: nonSelf ?? callerClassName, methodName: name };
+      const nonSelf = owners.find(o => o !== callerFqn);
+      return { className: nonSelf ?? callerFqn, methodName: name };
     });
   }
 
@@ -143,14 +148,17 @@ export class WorkspaceIndex {
     if (!method || method.callsTo.length === 0) { return []; }
 
     const resolved = this.resolveCallsTo(method.callsTo, className);
-    return resolved.map(ref => ({
-      label:      `${ref.className !== '?' ? ref.className + '.' : ''}${ref.methodName}()`,
-      className:  ref.className,
-      methodName: ref.methodName,
-      children:   ref.className !== '?'
-        ? this.getCallChain(ref.className, ref.methodName, maxDepth - 1, new Set(visited))
-        : []
-    }));
+    return resolved.map(ref => {
+      const simpleName = ref.className !== '?' ? (ref.className.split('.').pop() ?? ref.className) : null;
+      return {
+        label:      `${simpleName ? simpleName + '.' : ''}${ref.methodName}()`,
+        className:  ref.className,
+        methodName: ref.methodName,
+        children:   ref.className !== '?'
+          ? this.getCallChain(ref.className, ref.methodName, maxDepth - 1, new Set(visited))
+          : []
+      };
+    });
   }
 
   // ── Utility ──────────────────────────────────────────────────────

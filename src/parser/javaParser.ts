@@ -94,7 +94,7 @@ function startOf(node: any): number {
 
 function findJavadoc(source: string, offset: number): string {
   const before = source.slice(0, offset);
-  const m = before.match(/\/\*\*([\s\S]*?)\*\/\s*(?:@[\w(][^\n]*)?\s*$/);
+  const m = before.match(/\/\*\*([\s\S]*?)\*\/\s*(?:@[^\n]*\s*)*$/);
   if (!m) { return ''; }
   return m[1]
     .split('\n')
@@ -368,6 +368,7 @@ function processClassDecl(
   if (normalDecl) {
     const nc   = normalDecl.children ?? {};
     const name = kids(kid(nc, 'typeIdentifier')?.children, 'Identifier')[0]?.image ?? '';
+    if (!name) { return []; }
     const superClass = kid(nc, 'classExtends')
       ? flatten(kid(kid(nc, 'classExtends')?.children, 'classType')).trim() || null : null;
     const interfaces = kids(kid(kid(nc, 'classImplements')?.children, 'interfaceTypeList')?.children, 'interfaceType')
@@ -392,6 +393,7 @@ function processClassDecl(
   if (recordDecl) {
     const rc   = recordDecl.children ?? {};
     const name = kids(kid(rc, 'typeIdentifier')?.children, 'Identifier')[0]?.image ?? '';
+    if (!name) { return []; }
     const interfaces = kids(kid(kid(rc, 'classImplements')?.children, 'interfaceTypeList')?.children, 'interfaceType')
       .map((it: any) => flatten(it).trim());
     // Record components become implicitly public final fields
@@ -429,6 +431,7 @@ function processClassDecl(
   if (enumDecl) {
     const ec   = enumDecl.children ?? {};
     const name = kids(kid(ec, 'typeIdentifier')?.children, 'Identifier')[0]?.image ?? '';
+    if (!name) { return []; }
     const interfaces = kids(kid(kid(ec, 'classImplements')?.children, 'interfaceTypeList')?.children, 'interfaceType')
       .map(it => flatten(it).trim());
     const enumBodyCtx = kid(ec, 'enumBody')?.children ?? {};
@@ -465,6 +468,7 @@ function processInterfaceDecl(
   if (normalDecl) {
     const nc   = normalDecl.children ?? {};
     const name = kids(kid(nc, 'typeIdentifier')?.children, 'Identifier')[0]?.image ?? '';
+    if (!name) { return []; }
     const bodyDecls = kids(kid(nc, 'interfaceBody')?.children, 'interfaceMemberDeclaration');
     const { fields, methods, nested } = processInterfaceBodyDecls(bodyDecls, name, source, pkgName, imports, filePath);
     const cls: JavaClass = {
@@ -486,6 +490,7 @@ function processInterfaceDecl(
   if (annotDecl) {
     const ac   = annotDecl.children ?? {};
     const name = kids(kid(ac, 'typeIdentifier')?.children, 'Identifier')[0]?.image ?? '';
+    if (!name) { return []; }
     return [{
       name, kind: 'annotation', parentClass,
       visibility: mods.visibility, isAbstract: false,
