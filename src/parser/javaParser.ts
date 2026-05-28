@@ -33,6 +33,7 @@ export interface JavaMethod {
   isAbstract: boolean;
   javadoc: string;
   callsTo: string[];
+  annotations: string[];
 }
 
 export interface JavaClass {
@@ -248,11 +249,12 @@ function parseMethod(node: any, source: string, modKey: string): JavaMethod {
   const bodyNode = kid(ctx, 'methodBody');
   return {
     name, returnType, parameters,
-    visibility: mods.visibility,
-    isStatic:   mods.isStatic,
-    isAbstract: mods.isAbstract,
-    javadoc:    findJavadoc(source, startOf(node)),
-    callsTo:    bodyNode ? extractCallsTo(bodyNode) : [],
+    visibility:  mods.visibility,
+    isStatic:    mods.isStatic,
+    isAbstract:  mods.isAbstract,
+    annotations: mods.annotations,
+    javadoc:     findJavadoc(source, startOf(node)),
+    callsTo:     bodyNode ? extractCallsTo(bodyNode) : [],
   };
 }
 
@@ -268,10 +270,12 @@ function parseCtor(node: any, source: string): JavaMethod {
   const bodyNode = kid(ctx, 'constructorBody');
   return {
     name, returnType: '', parameters,
-    visibility: mods.visibility,
-    isStatic: false, isAbstract: false,
-    javadoc: findJavadoc(source, startOf(node)),
-    callsTo: bodyNode ? extractCallsTo(bodyNode) : [],
+    visibility:  mods.visibility,
+    isStatic:    false,
+    isAbstract:  false,
+    annotations: mods.annotations,
+    javadoc:     findJavadoc(source, startOf(node)),
+    callsTo:     bodyNode ? extractCallsTo(bodyNode) : [],
   };
 }
 

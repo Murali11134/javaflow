@@ -86,16 +86,18 @@ export class WorkspaceIndex {
       const owners = this.resolveMethod(name);
       if (owners.length === 0) { return { className: '?', methodName: name }; }
 
-      // Prefer self
-      if (owners.includes(callerClassName)) {
-        return { className: callerClassName, methodName: name };
-      }
-      // Prefer parent class
+      // Single owner — unambiguous
+      if (owners.length === 1) { return { className: owners[0], methodName: name }; }
+
+      // Multiple owners: prefer parent class, then first non-self class, then self.
+      // Deprioritising self avoids false recursive loops where the caller happens
+      // to share a method name with a callee (e.g. OrderService.findById()
+      // calling orderRepository.findById() — both classes have findById).
       if (callerCls?.parentClass && owners.includes(callerCls.parentClass)) {
         return { className: callerCls.parentClass, methodName: name };
       }
-      // Fall back to first found
-      return { className: owners[0], methodName: name };
+      const nonSelf = owners.find(o => o !== callerClassName);
+      return { className: nonSelf ?? callerClassName, methodName: name };
     });
   }
 

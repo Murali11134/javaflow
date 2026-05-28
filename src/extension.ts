@@ -119,6 +119,11 @@ export function activate(context: vscode.ExtensionContext): void {
               vscode.window.showWarningMessage('JavaFlow: No .java files found in this folder.');
               return;
             }
+            if (javaFiles.length >= 200) {
+              vscode.window.showWarningMessage(
+                `JavaFlow: Folder contains more than 200 Java files — only the first 200 were scanned. Results may be incomplete.`
+              );
+            }
 
             progress.report({ message: `Parsing ${javaFiles.length} files…` });
             const allClasses = [];

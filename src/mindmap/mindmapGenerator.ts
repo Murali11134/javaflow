@@ -109,8 +109,13 @@ function renderClass(
     lines.push(`${h(headingLevel + 1)} ⚙️ Methods`);
     for (const method of visibleMethods) {
       const params = method.parameters.map(p => `${p.name}: ${p.type}`).join(', ');
-      const sig    = `${method.name}(${params}) : ${method.returnType}`;
-      lines.push(`${h(headingLevel + 2)} ${visEmoji(method.visibility)} ${sig}`);
+      const sig    = method.returnType
+        ? `${method.name}(${params}) : ${method.returnType}`
+        : `${method.name}(${params})`;
+      const annPrefix = method.annotations.length > 0
+        ? method.annotations.join(' ') + ' '
+        : '';
+      lines.push(`${h(headingLevel + 2)} ${visEmoji(method.visibility)} ${annPrefix}${sig}`);
 
       if (summary) {
         const desc = summary.methodSummaries.get(method.name);
