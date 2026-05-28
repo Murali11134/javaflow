@@ -204,6 +204,9 @@ export function generateClassMindmap(
   rootLabel?: string
 ): string {
   const all = allClasses ?? [cls];
+  if (all.length === 0) {
+    return `# ☕ ${rootLabel ?? cls.name}\n## *(No classes found)*`;
+  }
   const idx = index ?? new WorkspaceIndex(all);
   const topLevel = all.filter(c => c.parentClass === null);
   const lines: string[] = [];

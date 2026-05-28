@@ -66,7 +66,11 @@ export function activate(context: vscode.ExtensionContext): void {
         { location: vscode.ProgressLocation.Notification, title: 'JavaFlow: Generating mindmap…', cancellable: false },
         async () => {
           try {
-            const source  = fs.readFileSync(fileUri!.fsPath, 'utf-8');
+            // Prefer the live editor text so unsaved changes are reflected.
+            const activeDoc = vscode.window.activeTextEditor?.document;
+            const source = (activeDoc?.uri.fsPath === fileUri!.fsPath)
+              ? activeDoc.getText()
+              : fs.readFileSync(fileUri!.fsPath, 'utf-8');
             const classes = parseJavaFile(source, fileUri!.fsPath);
 
             if (classes.length === 0) {
