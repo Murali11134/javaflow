@@ -1,7 +1,7 @@
 {
   "name": "javaflow",
   "displayName": "JavaFlow",
-  "description": "Understand your Java codebase through interactive mindmaps with NLP summaries",
+  "description": "Visualize Java codebases locally through interactive mindmaps and plain-English summaries",
   "version": "1.1.0",
   "publisher": "javaflow",
   "license": "MIT",
@@ -25,7 +25,8 @@
     "mindmap",
     "codebase",
     "visualization",
-    "nlp"
+    "onboarding",
+    "offline"
   ],
   "activationEvents": [
     "onCommand:javaflow.showMindmap",
@@ -94,7 +95,7 @@
           "default": 3,
           "minimum": 0,
           "maximum": 10,
-          "description": "Maximum depth of call graph to traverse (0 = disabled, max 10)"
+          "description": "Maximum depth of best-effort method call references to show (0 = disabled, max 10)"
         },
         "javaflow.showPrivateMembers": {
           "type": "boolean",
@@ -104,7 +105,7 @@
         "javaflow.nlpSummaries": {
           "type": "boolean",
           "default": true,
-          "description": "Generate NLP plain-English summaries for classes and methods"
+          "description": "Generate local plain-English summaries for classes and methods"
         }
       }
     }
@@ -132,5 +133,5 @@
     "markmap-view": "^0.18.12",
     "mocha": "^10.3.0",
     "typescript": "^5.3.0"
-  },
+  }
 }
