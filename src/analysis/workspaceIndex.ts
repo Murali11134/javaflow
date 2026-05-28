@@ -49,7 +49,13 @@ export class WorkspaceIndex {
 
   constructor(classes: JavaClass[]) {
     for (const cls of classes) {
-      this.classMap.set(cls.name, cls);
+      // Register by FQN so duplicate simple names across packages never overwrite each other.
+      const fqn = cls.packageName ? `${cls.packageName}.${cls.name}` : cls.name;
+      this.classMap.set(fqn, cls);
+      // Also register by simple name as a convenience alias — only when unambiguous.
+      if (!this.classMap.has(cls.name)) {
+        this.classMap.set(cls.name, cls);
+      }
       for (const method of cls.methods) {
         const owners = this.methodOwners.get(method.name) ?? [];
         owners.push(cls.name);

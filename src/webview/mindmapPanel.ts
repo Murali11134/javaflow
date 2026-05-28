@@ -338,6 +338,7 @@ const vscodeApi = acquireVsCodeApi();
   document.getElementById('btn-fit').addEventListener('click', () => mm.fit());
 
   document.getElementById('btn-expand-all').addEventListener('click', () => {
+    if (!mm?.state?.data) { return; }
     // Walk the live tree directly — bypasses setData/_initializeData which would
     // re-apply initialExpandLevel and overwrite the fold values we set here.
     function expandNode(node) {
@@ -349,6 +350,7 @@ const vscodeApi = acquireVsCodeApi();
   });
 
   document.getElementById('btn-collapse-all').addEventListener('click', () => {
+    if (!mm?.state?.data) { return; }
     function collapseChildren(node) {
       if (node.children) {
         node.children.forEach(child => {
@@ -375,6 +377,7 @@ const vscodeApi = acquireVsCodeApi();
 
   function collectMatches(q) {
     matches = [];
+    if (!mm?.state?.data) { return; }
     function walk(node) {
       const plain = (node.content || '').replace(/<[^>]*>/g, '').toLowerCase();
       if (plain.includes(q)) { matches.push(node); }

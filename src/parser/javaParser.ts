@@ -292,6 +292,20 @@ function processClassBodyDecls(
     if (ctx.constructorDeclaration) {
       methods.push(parseCtor(ctx.constructorDeclaration[0], source));
     }
+    // Static initializer blocks: static { ... }
+    if (ctx.staticInitializer) {
+      const block = kid(ctx.staticInitializer[0].children, 'block');
+      if (block) {
+        const calls = extractCallsTo(block);
+        if (calls.length > 0) {
+          methods.push({
+            name: 'static', returnType: '', parameters: [],
+            visibility: 'package', isStatic: true, isAbstract: false,
+            annotations: [], javadoc: '', callsTo: calls,
+          });
+        }
+      }
+    }
     const mem = kid(ctx, 'classMemberDeclaration')?.children ?? {};
     if (mem.fieldDeclaration)   { fields.push(...parseFields(mem.fieldDeclaration[0], source, 'fieldModifier')); }
     if (mem.methodDeclaration)  { methods.push(parseMethod(mem.methodDeclaration[0], source, 'methodModifier')); }

@@ -266,9 +266,28 @@ export function generateFolderMindmap(
         lines.push(`#### 🔢 ${shown.join(', ')}${more}`);
       }
 
-      // Nested classes summary
+      // Nested classes — render each with kind, annotations, and public methods
       if (cls.nestedClasses.length > 0) {
-        lines.push(`#### 🔲 Inner: ${cls.nestedClasses.join(', ')}`);
+        lines.push(`#### 🔲 Inner Classes`);
+        for (const nestedName of cls.nestedClasses) {
+          const nestedCls = idx.getClass(nestedName);
+          if (!nestedCls) { lines.push(`##### ${nestedName}`); continue; }
+          const nestedEmoji = KIND_EMOJI[nestedCls.kind] ?? '🏛';
+          lines.push(`##### ${nestedEmoji} ${nestedName}`);
+          if (nestedCls.annotations.length > 0) {
+            lines.push(`###### 📝 ${nestedCls.annotations.join(' ')}`);
+          }
+          if (nestedCls.enumConstants.length > 0) {
+            const shown = nestedCls.enumConstants.slice(0, 4);
+            const more  = nestedCls.enumConstants.length > 4 ? ` …+${nestedCls.enumConstants.length - 4}` : '';
+            lines.push(`###### 🔢 ${shown.join(', ')}${more}`);
+          }
+          const pubNested = nestedCls.methods.filter(m => m.visibility === 'public');
+          for (const m of pubNested.slice(0, 4)) {
+            lines.push(`###### ${m.name}(${m.parameters.map(p => p.type).join(', ')})`);
+          }
+          if (pubNested.length > 4) { lines.push(`###### …+${pubNested.length - 4} more`); }
+        }
       }
 
       // Public methods (capped at 6)
