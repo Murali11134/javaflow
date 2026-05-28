@@ -411,8 +411,8 @@ const vscodeApi = acquireVsCodeApi();
     }
 
     await mm.renderData();
-    await mm.setHighlight(node);
-    await mm.ensureVisible(node, { top: 48, bottom: 48, left: 48, right: 48 });
+    try { await mm.setHighlight(node); } catch (_) {}
+    try { await mm.ensureVisible(node, { top: 48, bottom: 48, left: 48, right: 48 }); } catch (_) {}
     searchCount.textContent = \`\${matchIndex + 1} / \${matches.length}\`;
   }
 
@@ -426,7 +426,7 @@ const vscodeApi = acquireVsCodeApi();
     searchCount.textContent = '';
     matches = [];
     matchIndex = -1;
-    mm.setHighlight(undefined);
+    try { mm.setHighlight(undefined); } catch (_) {}
   });
   document.getElementById('btn-prev').addEventListener('click', () => goToMatch(matchIndex - 1));
   document.getElementById('btn-next').addEventListener('click', () => goToMatch(matchIndex + 1));
@@ -437,7 +437,7 @@ const vscodeApi = acquireVsCodeApi();
       searchCount.textContent = '';
       matches = [];
       matchIndex = -1;
-      mm.setHighlight(undefined);
+      try { mm.setHighlight(undefined); } catch (_) {}
       return;
     }
     collectMatches(q);
@@ -445,7 +445,7 @@ const vscodeApi = acquireVsCodeApi();
       goToMatch(0);
     } else {
       searchCount.textContent = 'No matches';
-      mm.setHighlight(undefined);
+      try { mm.setHighlight(undefined); } catch (_) {}
     }
   });
 
