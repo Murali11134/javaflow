@@ -12,7 +12,8 @@ import { glob } from 'glob';
 const Mocha = require('mocha');
 
 export async function run(): Promise<void> {
-  const mocha = new Mocha({ ui: 'bdd', color: true, timeout: 10_000 });
+  // Test files use Mocha's TDD globals: suite(...) and test(...).
+  const mocha = new Mocha({ ui: 'tdd', color: true, timeout: 10_000 });
 
   const testsRoot = path.resolve(__dirname, '.');
   const files = await glob('**/*.test.js', { cwd: testsRoot });
