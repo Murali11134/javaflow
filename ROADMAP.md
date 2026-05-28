@@ -1,67 +1,88 @@
 # JavaFlow Roadmap
 
-JavaFlow is an open-source VS Code extension for visualizing Java and Spring Boot codebases as interactive mind maps.
+JavaFlow is focused on local, visual Java code exploration inside VS Code. The goal is to help developers onboard into unfamiliar Java projects quickly without sending source code to external services.
 
-## Phase 1: Publishable MVP
+## v1 Release Checklist
 
-Goal: make JavaFlow safe, understandable, and easy to try.
+### Must Have
 
-- [ ] Add extension icon
-- [ ] Add screenshots and demo GIF to README
-- [ ] Add `CHANGELOG.md`
-- [ ] Add `CONTRIBUTING.md`
-- [ ] Add `SECURITY.md`
-- [ ] Bundle Markmap/D3 assets locally instead of loading from CDN
-- [ ] Add a strict Content Security Policy to the webview
-- [ ] Improve error handling for empty folders and invalid Java files
-- [ ] Add sample Java project for demo/testing
-- [ ] Package extension using `vsce package`
-- [ ] Publish first free version to VS Code Marketplace
+- [x] Valid `package.json` metadata.
+- [x] Clear README positioning.
+- [x] Local/offline webview assets.
+- [x] Single-file mind map generation.
+- [x] Folder-level mind map generation.
+- [x] CST-based Java parser.
+- [x] Local plain-English summaries.
+- [x] Search, expand, collapse, fit, refresh, and SVG export.
+- [ ] CI passing on GitHub Actions.
+- [ ] Marketplace icon and banner assets.
+- [ ] Marketplace screenshots.
+- [ ] Sample Java project for demos and testing.
+- [ ] Basic parser test coverage for common Java patterns.
 
-## Phase 2: Better Java parsing
+### Should Have
 
-Goal: make parsing reliable enough for real Java projects.
+- [ ] Configurable folder scan limit instead of fixed 200-file cap.
+- [ ] Better warning when folder results are incomplete.
+- [ ] More tests for records, enums, annotations, constructors, nested classes, and generics.
+- [ ] Tests for Spring-style annotations and common enterprise Java patterns.
+- [ ] Clear marketplace disclaimer that method call references are best-effort.
+- [ ] Changelog maintained per release.
 
-- [ ] Replace regex-only parsing with AST-based parsing
-- [ ] Properly support constructors
-- [ ] Support annotations
-- [ ] Support records
-- [ ] Support nested classes
-- [ ] Support enums with methods/fields
-- [ ] Improve generic type parsing
-- [ ] Improve lambda and stream handling
-- [ ] Add more parser unit tests
+### Nice to Have
 
-## Phase 3: Spring Boot visualization
+- [ ] Export as PNG.
+- [ ] Export mind map as Markdown.
+- [ ] Open source file from mind map node click.
+- [ ] Filter by package/class/member visibility.
+- [ ] Minimap or overview panel for very large maps.
+- [ ] Compare two classes or packages more explicitly.
 
-Goal: make JavaFlow genuinely useful for modern backend projects.
+## Technical Roadmap
 
-- [ ] Detect `@RestController` and `@Controller`
-- [ ] Detect `@Service`
-- [ ] Detect `@Repository`
-- [ ] Detect `@Entity`
-- [ ] Show Controller → Service → Repository flow
-- [ ] Show API endpoint mappings from `@GetMapping`, `@PostMapping`, etc.
-- [ ] Show DTO/entity relationships where possible
-- [ ] Add Spring Boot sample project
+### Parser Improvements
 
-## Phase 4: Community and growth
+- Handle more Java 17+ syntax edge cases.
+- Improve record component and record method rendering.
+- Surface sealed classes and permitted subclasses.
+- Improve annotation member extraction.
+- Handle anonymous inner classes and lambdas more clearly.
+- Expand tests around generics, bounded types, arrays, varargs, and overloaded methods.
 
-Goal: get real feedback from Java developers.
+### Call Reference Improvements
 
-- [ ] Publish launch article on DEV.to
-- [ ] Share demo on LinkedIn
-- [ ] Share feedback post on Reddit r/vscode
-- [ ] Share Java-focused post on Reddit r/java or r/SpringBoot
-- [ ] Add GitHub topics: `java`, `spring-boot`, `vscode-extension`, `mindmap`, `code-visualization`
-- [ ] Add GitHub Sponsors or donation link only after useful adoption
+Current call references are name-based and best-effort. Future work should move toward type-aware resolution.
 
-## Phase 5: Optional monetization later
+Potential improvements:
 
-JavaFlow Community should remain open source and local-first. Monetization can be explored later through:
+- Track local variable declarations and their types.
+- Resolve calls through fields and constructor-injected dependencies.
+- Use imports and package context to resolve class names.
+- Distinguish self-calls, collaborator calls, static calls, and constructor calls.
+- Handle overloaded methods using parameter count/type hints.
+- Mark unresolved calls clearly instead of making them look authoritative.
 
-- GitHub Sponsors
-- Paid support
-- Custom feature development
-- Company-specific onboarding/report generation
-- Optional Pro features, only after community validation
+### Large Project Support
+
+- Make folder scan limit configurable.
+- Add cancellation-safe parsing improvements.
+- Cache parsed file results.
+- Re-parse only changed files.
+- Add package-level summaries before class-level expansion.
+- Consider lazy-loading large maps.
+
+### UX Improvements
+
+- Add marketplace-quality screenshots and demo GIF.
+- Add first-run help view.
+- Improve empty/error states.
+- Add node click actions to open files in VS Code.
+- Add better visual grouping for Spring controllers, services, repositories, DTOs, and configs.
+
+## Product Direction
+
+JavaFlow should be positioned as:
+
+> Private, offline Java code visualization for onboarding, code review, and quick architecture exploration.
+
+It should not be positioned as a full AI code-understanding system or compiler-grade static-analysis engine until deeper type resolution exists.
