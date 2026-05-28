@@ -5,8 +5,6 @@
  * Strategy (no external API required):
  *   1. Use Javadoc if available (clean it up)
  *   2. If no Javadoc, build a template-based description from the code structure
- *
- * Optional: set JAVAFLOW_OPENAI_KEY in env to upgrade to LLM-generated summaries.
  */
 
 import { JavaClass, JavaMethod, JavaField } from '../parser/javaParser';
@@ -192,7 +190,7 @@ export function buildClassSummary(cls: JavaClass): ClassSummary {
   const fieldSummaries = new Map<string, string>();
 
   for (const method of cls.methods) {
-    methodSummaries.set(method.name, summarizeMethod(method, cls));
+    methodSummaries.set(`${method.name}|${method.parameters.length}`, summarizeMethod(method, cls));
   }
   for (const field of cls.fields) {
     fieldSummaries.set(field.name, summarizeField(field));

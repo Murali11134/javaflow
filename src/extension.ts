@@ -1,20 +1,15 @@
 /**
- * JavaFlow — VS Code Extension Entry Point (v2)
+ * JavaFlow — VS Code Extension Entry Point
  *
  * Registers:
  *   • javaflow.showMindmap          — single Java file → detailed mindmap
  *   • javaflow.showMindmapForFolder — folder → package overview mindmap
- *
- * v2 changes:
- *   - Passes all classes in the file (not just the first) so nested class
- *     relationships and cross-method call resolution work in single-file view.
- *   - Builds a WorkspaceIndex over all parsed classes for folder view.
  */
 
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { parseJavaFile } from './parser/javaParser';
+import { parseJavaFile, JavaClass } from './parser/javaParser';
 import { generateClassMindmap, generateFolderMindmap, MindmapOptions } from './mindmap/mindmapGenerator';
 import { MindmapPanel } from './webview/mindmapPanel';
 import { WorkspaceIndex } from './analysis/workspaceIndex';
@@ -39,7 +34,7 @@ function collectJavaFiles(dirPath: string, max = 200): string[] {
     try {
       const entries = fs.readdirSync(p, { withFileTypes: true });
       for (const e of entries) {
-        if (e.name.startsWith('.') || e.name === 'node_modules' || e.name === 'target') { continue; }
+        if (e.name.startsWith('.') || e.name === 'node_modules' || e.name === 'target' || e.name === 'build') { continue; }
         const full = path.join(p, e.name);
         if (e.isDirectory()) { walk(full); }
         else if (e.isFile() && e.name.endsWith('.java')) { files.push(full); }
@@ -126,7 +121,7 @@ export function activate(context: vscode.ExtensionContext): void {
             }
 
             progress.report({ message: `Parsing ${javaFiles.length} files…` });
-            const allClasses = [];
+            const allClasses: JavaClass[] = [];
             for (const fp of javaFiles) {
               try {
                 const source = fs.readFileSync(fp, 'utf-8');

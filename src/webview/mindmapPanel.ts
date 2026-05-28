@@ -63,8 +63,11 @@ export class MindmapPanel {
       async message => {
         switch (message.command) {
           case 'exportSvg': {
+            const workspaceUri = vscode.workspace.workspaceFolders?.[0]?.uri;
             const uri = await vscode.window.showSaveDialog({
-              defaultUri: vscode.Uri.file('javaflow-mindmap.svg'),
+              defaultUri: workspaceUri
+                ? vscode.Uri.joinPath(workspaceUri, 'javaflow-mindmap.svg')
+                : undefined,
               filters: { 'SVG Image': ['svg'] }
             });
             if (uri) {
@@ -290,23 +293,29 @@ export class MindmapPanel {
 <script nonce="${nonce}">
 const vscodeApi = acquireVsCodeApi();
 (async () => {
+  try {
   const markdown = \`${escaped}\`;
 
-  await new Promise(r => {
-    if (window.markmap && window.markmap.Transformer) { r(); return; }
-    const check = setInterval(() => {
-      if (window.markmap && window.markmap.Transformer) { clearInterval(check); r(); }
+  await new Promise((resolve, reject) => {
+    if (window.markmap && window.markmap.Transformer) { resolve(); return; }
+    let check;
+    const t = setTimeout(() => {
+      clearInterval(check);
+      document.getElementById('loading').innerHTML = '<p style="color:#f38ba8">Mindmap failed to load — please reload the panel.</p>';
+      reject(new Error('Markmap init timeout'));
+    }, 10000);
+    check = setInterval(() => {
+      if (window.markmap && window.markmap.Transformer) { clearInterval(check); clearTimeout(t); resolve(); }
     }, 100);
   });
 
-  const { Markmap, loadCSS, loadJS } = window.markmap;
+  const { Markmap } = window.markmap;
   const { Transformer } = window.markmap;
 
   // Empty plugin list disables KaTeX/Prism — neither is used for Java mindmaps
   // and both would be blocked by the webview CSP anyway.
   const transformer = new Transformer([]);
   const { root } = transformer.transform(markdown);
-  const rootOriginal = JSON.parse(JSON.stringify(root));
 
   const svgEl = document.getElementById('mindmap');
   const mm = Markmap.create(svgEl, {
@@ -376,7 +385,7 @@ const vscodeApi = acquireVsCodeApi();
   function buildParentMap() {
     const map = new Map();
     function walk(node, parent) {
-      if (parent) { map.set(node.state.id, parent); }
+      if (parent && node.state) { map.set(node.state.id, parent); }
       if (node.children) { node.children.forEach(c => walk(c, node)); }
     }
     walk(mm.state.data, null);
@@ -390,10 +399,10 @@ const vscodeApi = acquireVsCodeApi();
 
     // Unfold all ancestors so the matched node is visible
     const parentMap = buildParentMap();
-    let ancestor = parentMap.get(node.state.id);
+    let ancestor = node.state ? parentMap.get(node.state.id) : undefined;
     while (ancestor) {
       if (ancestor.payload) { ancestor.payload.fold = 0; } else { ancestor.payload = { fold: 0 }; }
-      ancestor = parentMap.get(ancestor.state.id);
+      ancestor = ancestor.state ? parentMap.get(ancestor.state.id) : undefined;
     }
 
     await mm.renderData();
@@ -412,7 +421,7 @@ const vscodeApi = acquireVsCodeApi();
     searchCount.textContent = '';
     matches = [];
     matchIndex = -1;
-    mm.setHighlight(null);
+    mm.setHighlight(undefined);
   });
   document.getElementById('btn-prev').addEventListener('click', () => goToMatch(matchIndex - 1));
   document.getElementById('btn-next').addEventListener('click', () => goToMatch(matchIndex + 1));
@@ -423,7 +432,7 @@ const vscodeApi = acquireVsCodeApi();
       searchCount.textContent = '';
       matches = [];
       matchIndex = -1;
-      mm.setHighlight(null);
+      mm.setHighlight(undefined);
       return;
     }
     collectMatches(q);
@@ -431,7 +440,7 @@ const vscodeApi = acquireVsCodeApi();
       goToMatch(0);
     } else {
       searchCount.textContent = 'No matches';
-      mm.setHighlight(null);
+      mm.setHighlight(undefined);
     }
   });
 
@@ -440,6 +449,7 @@ const vscodeApi = acquireVsCodeApi();
     if (e.key === 'Escape') { document.getElementById('btn-search-close').click(); }
   });
 
+  } catch (_) { /* timeout or init error — loading div already shows the message */ }
 })();
 </script>
 </body>

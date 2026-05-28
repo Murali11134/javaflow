@@ -118,7 +118,7 @@ function renderClass(
       lines.push(`${h(headingLevel + 2)} ${visEmoji(method.visibility)} ${annPrefix}${sig}`);
 
       if (summary) {
-        const desc = summary.methodSummaries.get(method.name);
+        const desc = summary.methodSummaries.get(`${method.name}|${method.parameters.length}`);
         if (desc) { lines.push(`${h(headingLevel + 3)} 💬 ${desc}`); }
       }
 
@@ -209,8 +209,9 @@ export function generateClassMindmap(
   const lines: string[] = [];
 
   if (topLevel.length > 1 && rootLabel) {
-    // Multiple sibling top-level classes in one file — use filename as root
-    lines.push(`# ☕ ${rootLabel}`);
+    const sharedPkg = topLevel[0]?.packageName;
+    const pkgSuffix = sharedPkg ? ` · ${sharedPkg}` : '';
+    lines.push(`# ☕ ${rootLabel}${pkgSuffix}`);
     for (const topCls of topLevel) {
       renderClass(topCls, opts, lines, 2, idx);
     }
@@ -247,7 +248,7 @@ export function generateFolderMindmap(
     packages.set(pkg, arr);
   }
 
-  for (const [pkg, pkgClasses] of packages) {
+  for (const [pkg, pkgClasses] of [...packages.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     lines.push(`## 📦 ${pkg}`);
     for (const cls of pkgClasses) {
       const summary = opts.nlpSummaries ? buildClassSummary(cls) : null;
@@ -278,7 +279,7 @@ export function generateFolderMindmap(
           const paramTypes = m.parameters.map(p => p.type).join(', ');
           lines.push(`##### ${m.name}(${paramTypes})`);
           if (summary) {
-            const desc = summary.methodSummaries.get(m.name);
+            const desc = summary.methodSummaries.get(`${m.name}|${m.parameters.length}`);
             if (desc) { lines.push(`###### ${desc}`); }
           }
           // Resolved call targets (one level, capped at 4)
