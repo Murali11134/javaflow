@@ -61,11 +61,15 @@ export function summarizeMethod(method: JavaMethod, parentClass: JavaClass): str
     clone:       'Creates and returns a copy of this object.',
     finalize:    'Called by the garbage collector before reclamation.',
   };
+  // True when the pattern description already implies the return value.
+  let skipReturnNote = false;
   if (objectMethods[method.name]) {
     parts.push(objectMethods[method.name]);
+    skipReturnNote = true;
   } else if (/^get[A-Z]/.test(method.name)) {
     const prop = decamelize(method.name.slice(3));
     parts.push(`Returns the ${prop}.`);
+    skipReturnNote = true;
   } else if (/^set[A-Z]/.test(method.name)) {
     const prop = decamelize(method.name.slice(3));
     parts.push(`Sets the ${prop}.`);
@@ -82,6 +86,7 @@ export function summarizeMethod(method: JavaMethod, parentClass: JavaClass): str
   } else if (/^find|^get|^fetch|^load|^read/.test(method.name)) {
     const subject = readableName.replace(/^(find|get|fetch|load|read)\s*/, '');
     parts.push(subject ? `Retrieves ${subject}.` : 'Retrieves the result.');
+    skipReturnNote = true;
   } else if (/^save|^persist|^write|^store/.test(method.name)) {
     const subject = readableName.replace(/^(save|persist|write|store)\s*/, '');
     parts.push(subject ? `Persists ${subject}.` : 'Persists the entity.');
@@ -113,8 +118,8 @@ export function summarizeMethod(method: JavaMethod, parentClass: JavaClass): str
     parts.push(`Takes ${paramNames}.`);
   }
 
-  // Return type note
-  if (method.returnType !== 'void' && method.returnType !== '') {
+  // Return type note — skipped when the pattern description already implies the return.
+  if (!skipReturnNote && method.returnType !== 'void' && method.returnType !== '') {
     parts.push(`Returns ${method.returnType}.`);
   }
 

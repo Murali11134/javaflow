@@ -124,7 +124,7 @@ export function activate(context: vscode.ExtensionContext): void {
             }
             if (javaFiles.length >= 200) {
               vscode.window.showWarningMessage(
-                `JavaFlow: Found more than 200 Java files — scanning was capped at 200. Results may be incomplete.`
+                `JavaFlow: Found 200 or more Java files — scanning was capped at 200. Results may be incomplete.`
               );
             }
 

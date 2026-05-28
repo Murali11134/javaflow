@@ -81,7 +81,6 @@ export class WorkspaceIndex {
     // aliases are absent (e.g. two classes share a name like "Builder").
     for (const cls of classes) {
       if (cls.parentClass === null) { continue; }
-      const fqn = cls.packageName ? `${cls.packageName}.${cls.name}` : cls.name;
       const parentFqn = cls.packageName
         ? `${cls.packageName}.${cls.parentClass}`
         : cls.parentClass;

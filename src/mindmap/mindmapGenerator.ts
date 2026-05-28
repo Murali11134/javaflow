@@ -31,7 +31,7 @@ function visEmoji(visibility: string): string {
 }
 
 function escHtml(s: string): string {
-  return s.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /** Render one class node and its members into `lines`. `headingLevel` sets the # depth. */
@@ -217,9 +217,6 @@ export function generateClassMindmap(
   rootLabel?: string
 ): string {
   const all = allClasses ?? [cls];
-  if (all.length === 0) {
-    return `# ☕ ${rootLabel ?? cls.name}\n## *(No classes found)*`;
-  }
   const idx = index ?? new WorkspaceIndex(all);
   const topLevel = all.filter(c => c.parentClass === null);
   const lines: string[] = [];
@@ -287,13 +284,13 @@ export function generateFolderMindmap(
       }
 
       // Nested classes — render each with kind, annotations, and public methods
-      if (cls.nestedClasses.length > 0) {
+      const clsFqn = cls.packageName ? `${cls.packageName}.${cls.name}` : cls.name;
+      const nestedClsArr = idx.nestedClassesOf(clsFqn);
+      if (nestedClsArr.length > 0) {
         lines.push(`#### 🔲 Inner Classes`);
-        for (const nestedName of cls.nestedClasses) {
-          const nestedCls = idx.getClass(nestedName);
-          if (!nestedCls) { lines.push(`##### ${nestedName} *(unresolved)*`); continue; }
+        for (const nestedCls of nestedClsArr) {
           const nestedEmoji = KIND_EMOJI[nestedCls.kind] ?? '🏛';
-          lines.push(`##### ${nestedEmoji} ${nestedName}`);
+          lines.push(`##### ${nestedEmoji} ${nestedCls.name}`);
           if (nestedCls.annotations.length > 0) {
             lines.push(`###### 📝 ${nestedCls.annotations.join(' ')}`);
           }
@@ -319,11 +316,11 @@ export function generateFolderMindmap(
           lines.push(`##### ${m.name}(${paramTypes})`);
           if (summary) {
             const desc = summary.methodSummaries.get(`${m.name}|${m.parameters.map(p => p.type).join(',')}`);
-            if (desc) { lines.push(`###### ${desc}`); }
+            if (desc) { lines.push(`###### ${escHtml(desc)}`); }
           }
           // Resolved call targets (one level, capped at 4)
           if (m.callsTo.length > 0 && opts.maxDepth > 0) {
-            const refs = idx.resolveCallsTo(m.callsTo, cls.packageName ? `${cls.packageName}.${cls.name}` : cls.name).slice(0, 4);
+            const refs = idx.resolveCallsTo(m.callsTo, clsFqn).slice(0, 4);
             for (const ref of refs) {
               const simpleName = ref.className !== '?' ? (ref.className.split('.').pop() ?? ref.className) : null;
               lines.push(`###### 📞 ${simpleName ? simpleName + '.' : ''}${ref.methodName}()`);

@@ -352,9 +352,32 @@ const vscodeApi = acquireVsCodeApi();
     if (msg.command !== 'updateContent') { return; }
     try {
       const { root: newRoot } = transformer.transform(msg.markdown);
+      // Apply initialExpandLevel=2 fold state so the refreshed tree isn't fully open.
+      function applyInitialFold(node, depth) {
+        const fold = depth >= 2 ? 1 : 0;
+        if (node.payload) { node.payload.fold = fold; } else { node.payload = { fold }; }
+        if (node.children) { node.children.forEach(c => applyInitialFold(c, depth + 1)); }
+      }
+      applyInitialFold(newRoot, 0);
       mm.state.data = newRoot;
       document.getElementById('title-text').textContent = '☕ ' + msg.title;
-      await mm.renderData();
+      // Clear stale search state — old tree nodes are now orphaned after the swap.
+      clearInlineHighlights();
+      matches = [];
+      matchIndex = -1;
+      cachedParentMap = null;
+      searchCount.textContent = '';
+      // Re-run any active search query against the new tree; otherwise fit to screen.
+      const q = searchInput.value.trim().toLowerCase();
+      if (q) {
+        collectMatches(q);
+        applyInlineHighlights(q);
+        if (matches.length) { await goToMatch(0); }
+        else { searchCount.textContent = 'No matches'; await mm.renderData(); try { mm.fit(); } catch (_) {} }
+      } else {
+        await mm.renderData();
+        try { mm.fit(); } catch (_) {}
+      }
     } catch (_) {}
   });
 
@@ -486,8 +509,8 @@ const vscodeApi = acquireVsCodeApi();
     try { await mm.renderData(); } catch (_) {}
     try { mm.setHighlight(undefined); } catch (_) {}
   });
-  document.getElementById('btn-prev').addEventListener('click', () => goToMatch(matchIndex - 1));
-  document.getElementById('btn-next').addEventListener('click', () => goToMatch(matchIndex + 1));
+  document.getElementById('btn-prev').addEventListener('click', async () => { await goToMatch(matchIndex - 1); });
+  document.getElementById('btn-next').addEventListener('click', async () => { await goToMatch(matchIndex + 1); });
 
   searchInput.addEventListener('input', async () => {
     const q = searchInput.value.trim().toLowerCase();
