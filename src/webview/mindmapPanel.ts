@@ -335,6 +335,7 @@ const vscodeApi = acquireVsCodeApi();
   }, root);
 
   document.getElementById('loading').style.display = 'none';
+  document.getElementById('btn-export').disabled = false;
 
   document.getElementById('btn-fit').addEventListener('click', () => mm.fit());
 
@@ -362,7 +363,9 @@ const vscodeApi = acquireVsCodeApi();
     mm.renderData().then(() => mm.fit());
   });
 
-  document.getElementById('btn-export').addEventListener('click', () => {
+  const btnExport = document.getElementById('btn-export');
+  btnExport.disabled = true;   // enabled once Markmap finishes rendering
+  btnExport.addEventListener('click', () => {
     const svg = document.getElementById('mindmap');
     vscodeApi.postMessage({ command: 'exportSvg', svg: svg.outerHTML });
   });

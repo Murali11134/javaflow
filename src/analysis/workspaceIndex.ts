@@ -106,7 +106,8 @@ export class WorkspaceIndex {
       // Deprioritising self avoids false recursive loops where the caller happens
       // to share a method name with a callee (e.g. OrderService.findById()
       // calling orderRepository.findById() — both classes have findById).
-      if (callerCls?.parentClass && owners.includes(callerCls.parentClass)) {
+      if (callerCls?.parentClass && owners.includes(callerCls.parentClass)
+          && this.classMap.has(callerCls.parentClass)) {
         return { className: callerCls.parentClass, methodName: name };
       }
       const nonSelf = owners.find(o => o !== callerClassName);

@@ -223,9 +223,25 @@ function extractCallsTo(bodyNode: any): string[] {
     }
   }
 
+  // Capture `new ClassName()` — extract the simple class name being instantiated.
+  // CST path: newExpression → unqualifiedClassInstanceCreationExpression
+  //           → classOrInterfaceTypeToInstantiate → Identifier(s)
+  function walkNewExpression(node: any): void {
+    const ctx   = node.children ?? {};
+    const ucice = kid(ctx, 'unqualifiedClassInstanceCreationExpression');
+    if (!ucice) { return; }
+    const typeNode = kid(ucice.children ?? {}, 'classOrInterfaceTypeToInstantiate');
+    if (!typeNode) { return; }
+    // flatten gives "java.util.ArrayList" or "ArrayList"; strip generics, take last segment
+    const typeName   = flatten(typeNode).replace(/<[\s\S]*$/, '').trim();
+    const simpleName = typeName.split('.').pop();
+    if (simpleName) { calls.add(simpleName); }
+  }
+
   function walk(node: any): void {
     if (!node || typeof node.image === 'string') { return; }
     if (node.name === 'primary') { walkPrimary(node); }
+    if (node.name === 'newExpression') { walkNewExpression(node); }
     for (const arr of Object.values(node.children ?? {})) {
       for (const c of arr as any[]) { walk(c); }
     }

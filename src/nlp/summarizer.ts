@@ -41,6 +41,8 @@ function cleanJavadoc(doc: string): string {
 // ─────────────────────────────────────────────────────────────────
 
 export function summarizeMethod(method: JavaMethod, parentClass: JavaClass): string {
+  if (!method.name) { return 'Internal method.'; }
+
   // 1. Javadoc wins
   const doc = cleanJavadoc(method.javadoc);
   if (doc.length > 10) { return doc; }
@@ -159,6 +161,9 @@ export function summarizeClass(cls: JavaClass): string {
       break;
     case 'annotation':
       parts.push(`Custom annotation for ${readableName}.`);
+      break;
+    case 'record':
+      parts.push(`Immutable data record representing ${readableName}.`);
       break;
     default: {
       if (cls.isAbstract) {

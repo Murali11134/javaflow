@@ -36,8 +36,11 @@ function renderClass(
   opts: MindmapOptions,
   lines: string[],
   headingLevel: number,
-  index: WorkspaceIndex | undefined
+  index: WorkspaceIndex | undefined,
+  visited = new Set<string>()
 ): void {
+  if (visited.has(cls.name)) { return; }
+  visited.add(cls.name);
   const h  = (n: number) => '#'.repeat(Math.min(n, 6));
   const summary = opts.nlpSummaries ? buildClassSummary(cls) : null;
   const emoji   = KIND_EMOJI[cls.kind] ?? '🏛';
@@ -145,7 +148,7 @@ function renderClass(
     if (children.length > 0) {
       lines.push(`${h(headingLevel + 1)} 🔲 Inner Classes`);
       for (const child of children) {
-        renderClass(child, opts, lines, headingLevel + 2, index);
+        renderClass(child, opts, lines, headingLevel + 2, index, new Set(visited));
       }
     }
   }
