@@ -88,9 +88,9 @@ export class WorkspaceIndex {
   /**
    * Given a callsTo list from one method, resolve each entry to its most
    * likely owning class. Preference order:
-   *   1. The caller's own class (self-call)
-   *   2. Its parent class (call to outer class method)
-   *   3. First indexed class found
+   *   1. The caller's parent class (outer class method call)
+   *   2. Any other indexed class (injected collaborator — far more common than self-recursion)
+   *   3. The caller's own class (self-call, last resort)
    *   4. '?' if completely unknown
    */
   resolveCallsTo(callsTo: string[], callerClassName: string): MethodRef[] {

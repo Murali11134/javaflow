@@ -77,22 +77,23 @@ function flatten(node: any): string {
   return tokens.map(t => t.img).join('');
 }
 
-/** Find the start offset of the first token inside a CST rule node. */
+/** Find the start offset of the first token inside a CST rule node. Returns -1 if not found. */
 function startOf(node: any): number {
-  if (!node) { return 0; }
+  if (!node) { return -1; }
   if (typeof node.startOffset === 'number') { return node.startOffset; }
   for (const arr of Object.values(node.children ?? {})) {
     for (const c of (arr as any[])) {
       const off = startOf(c);
-      if (off > 0) { return off; }
+      if (off >= 0) { return off; }
     }
   }
-  return 0;
+  return -1;
 }
 
 // ── Javadoc ────────────────────────────────────────────────────────────────
 
 function findJavadoc(source: string, offset: number): string {
+  if (offset < 0) { return ''; }
   const before = source.slice(0, offset);
   const m = before.match(/\/\*\*([\s\S]*?)\*\/\s*(?:@[^\n]*\s*)*$/);
   if (!m) { return ''; }
@@ -523,7 +524,14 @@ export function parseJavaFile(source: string, filePath: string): JavaClass[] {
   const imports = kids(occuCtx, 'importDeclaration').map(imp => {
     const ic = imp.children ?? {};
     const names = kids(kid(ic, 'packageOrTypeName')?.children, 'Identifier').map((t: any) => t.image);
-    return names.join('.') + (ic.Star ? '.*' : '');
+    const base = names.join('.');
+    if (ic.Star) { return base + '.*'; }
+    // Static specific import (e.g. import static Foo.BAR): trailing Identifier is the member name
+    if (ic.Static) {
+      const trailing = (ic.Identifier ?? []).map((t: any) => t.image);
+      if (trailing.length > 0) { return base + '.' + trailing[trailing.length - 1]; }
+    }
+    return base;
   });
 
   // Type declarations

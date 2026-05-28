@@ -77,6 +77,13 @@ export class MindmapPanel {
             }
             break;
           }
+          case 'refresh': {
+            const cmd = this._key.endsWith('.java')
+              ? 'javaflow.showMindmap'
+              : 'javaflow.showMindmapForFolder';
+            await vscode.commands.executeCommand(cmd, vscode.Uri.file(this._key));
+            break;
+          }
         }
       },
       null,
@@ -259,6 +266,7 @@ export class MindmapPanel {
   <button class="btn" id="btn-expand-all" title="Expand all nodes">Expand All</button>
   <button class="btn" id="btn-collapse-all" title="Collapse all nodes">Collapse All</button>
   <button class="btn" id="btn-fit" title="Fit to screen">⊞ Fit</button>
+  <button class="btn" id="btn-refresh" title="Re-parse and refresh mindmap">↺ Refresh</button>
   <button class="btn" id="btn-search" title="Search nodes">🔍 Search</button>
   <button class="btn" id="btn-export" title="Export as SVG" disabled>↓ SVG</button>
 </div>
@@ -301,7 +309,7 @@ const vscodeApi = acquireVsCodeApi();
   const markdown = \`${escaped}\`;
 
   await new Promise((resolve, reject) => {
-    if (window.markmap && window.markmap.Transformer) { resolve(); return; }
+    if (window.markmap && window.markmap.Transformer && window.markmap.Markmap) { resolve(); return; }
     let check;
     const t = setTimeout(() => {
       clearInterval(check);
@@ -309,7 +317,7 @@ const vscodeApi = acquireVsCodeApi();
       reject(new Error('Markmap init timeout'));
     }, 10000);
     check = setInterval(() => {
-      if (window.markmap && window.markmap.Transformer) { clearInterval(check); clearTimeout(t); resolve(); }
+      if (window.markmap && window.markmap.Transformer && window.markmap.Markmap) { clearInterval(check); clearTimeout(t); resolve(); }
     }, 100);
   });
 
@@ -340,6 +348,10 @@ const vscodeApi = acquireVsCodeApi();
   document.getElementById('btn-export').disabled = false;
 
   document.getElementById('btn-fit').addEventListener('click', () => { try { mm.fit(); } catch (_) {} });
+
+  document.getElementById('btn-refresh').addEventListener('click', () => {
+    vscodeApi.postMessage({ command: 'refresh' });
+  });
 
   document.getElementById('btn-expand-all').addEventListener('click', () => {
     if (!mm?.state?.data) { return; }
@@ -379,6 +391,40 @@ const vscodeApi = acquireVsCodeApi();
   let matchIndex = -1;
   let cachedParentMap = null;
 
+  // Inline text highlight tracking
+  const _origContent = new Map();
+  let _highlightedNodes = [];
+
+  function clearInlineHighlights() {
+    for (const node of _highlightedNodes) {
+      const id = node.state?.id;
+      if (id != null && _origContent.has(id)) { node.content = _origContent.get(id); }
+    }
+    _highlightedNodes = [];
+    _origContent.clear();
+  }
+
+  function applyInlineHighlights(q) {
+    clearInlineHighlights();
+    if (!mm?.state?.data) { return; }
+    function walkHL(node) {
+      const id = node.state?.id;
+      const orig = node.content ?? '';
+      if (id != null && !_origContent.has(id)) { _origContent.set(id, orig); }
+      const idx = orig.toLowerCase().indexOf(q);
+      if (idx >= 0 && id != null) {
+        node.content = orig.slice(0, idx) +
+          '<mark style="background:#f9e2af;color:#1e1e2e;border-radius:2px">' +
+          orig.slice(idx, idx + q.length) +
+          '</mark>' +
+          orig.slice(idx + q.length);
+        _highlightedNodes.push(node);
+      }
+      if (node.children) { node.children.forEach(walkHL); }
+    }
+    walkHL(mm.state.data);
+  }
+
   function collectMatches(q) {
     matches = [];
     cachedParentMap = null;
@@ -417,31 +463,37 @@ const vscodeApi = acquireVsCodeApi();
     searchBar.classList.toggle('visible');
     if (searchBar.classList.contains('visible')) { searchInput.focus(); }
   });
-  document.getElementById('btn-search-close').addEventListener('click', () => {
+  document.getElementById('btn-search-close').addEventListener('click', async () => {
     searchBar.classList.remove('visible');
     searchInput.value = '';
     searchCount.textContent = '';
     matches = [];
     matchIndex = -1;
+    clearInlineHighlights();
+    try { await mm.renderData(); } catch (_) {}
     try { mm.setHighlight(undefined); } catch (_) {}
   });
   document.getElementById('btn-prev').addEventListener('click', () => goToMatch(matchIndex - 1));
   document.getElementById('btn-next').addEventListener('click', () => goToMatch(matchIndex + 1));
 
-  searchInput.addEventListener('input', () => {
+  searchInput.addEventListener('input', async () => {
     const q = searchInput.value.trim().toLowerCase();
     if (!q) {
       searchCount.textContent = '';
       matches = [];
       matchIndex = -1;
+      clearInlineHighlights();
+      try { await mm.renderData(); } catch (_) {}
       try { mm.setHighlight(undefined); } catch (_) {}
       return;
     }
     collectMatches(q);
+    applyInlineHighlights(q);
     if (matches.length) {
       goToMatch(0);
     } else {
       searchCount.textContent = 'No matches';
+      try { mm.renderData().catch(() => {}); } catch (_) {}
       try { mm.setHighlight(undefined); } catch (_) {}
     }
   });

@@ -45,6 +45,19 @@
         "icon": "$(type-hierarchy)"
       }
     ],
+    "keybindings": [
+      {
+        "command": "javaflow.showMindmap",
+        "key": "ctrl+alt+m",
+        "mac": "cmd+alt+m",
+        "when": "editorLangId == java"
+      },
+      {
+        "command": "javaflow.showMindmapForFolder",
+        "key": "ctrl+alt+shift+m",
+        "mac": "cmd+alt+shift+m"
+      }
+    ],
     "menus": {
       "explorer/context": [
         {
@@ -114,12 +127,11 @@
     "d3": "^7.9.0",
     "esbuild": "^0.28.0",
     "glob": "^10.3.10",
+    "java-parser": "^3.0.1",
     "markmap-lib": "^0.18.12",
     "markmap-view": "^0.18.12",
     "mocha": "^10.3.0",
     "typescript": "^5.3.0"
   },
-  "dependencies": {
-    "java-parser": "^3.0.1"
-  }
+  "dependencies": {}
 }

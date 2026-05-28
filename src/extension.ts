@@ -61,6 +61,7 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showWarningMessage('JavaFlow: Please open or select a .java file first.');
         return;
       }
+      const f = fileUri;
 
       await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: 'JavaFlow: Generating mindmap…', cancellable: false },
@@ -68,12 +69,12 @@ export function activate(context: vscode.ExtensionContext): void {
           try {
             // Prefer live editor text (any open tab) so unsaved changes are reflected.
             const openDoc = vscode.workspace.textDocuments.find(
-              d => d.uri.fsPath === fileUri!.fsPath
+              d => d.uri.fsPath === f.fsPath
             );
             const source = openDoc
               ? openDoc.getText()
-              : fs.readFileSync(fileUri!.fsPath, 'utf-8');
-            const classes = parseJavaFile(source, fileUri!.fsPath);
+              : fs.readFileSync(f.fsPath, 'utf-8');
+            const classes = parseJavaFile(source, f.fsPath);
 
             if (classes.length === 0) {
               vscode.window.showWarningMessage('JavaFlow: No classes found. Make sure the file is valid Java.');
@@ -83,10 +84,10 @@ export function activate(context: vscode.ExtensionContext): void {
             const opts  = getOptions();
             const index = new WorkspaceIndex(classes);
             const primary = classes.find(c => c.parentClass === null) ?? classes[0];
-            const title    = path.basename(fileUri!.fsPath, '.java');
+            const title    = path.basename(f.fsPath, '.java');
             const markdown = generateClassMindmap(primary, opts, classes, index, title);
 
-            MindmapPanel.createOrShow(context.extensionUri, markdown, title, fileUri!.fsPath);
+            MindmapPanel.createOrShow(context.extensionUri, markdown, title, f.fsPath);
           } catch (err) {
             vscode.window.showErrorMessage(`JavaFlow error: ${(err as Error).message}`);
           }
@@ -122,7 +123,7 @@ export function activate(context: vscode.ExtensionContext): void {
             }
             if (javaFiles.length >= 200) {
               vscode.window.showWarningMessage(
-                `JavaFlow: Folder contains more than 200 Java files — only the first 200 were scanned. Results may be incomplete.`
+                `JavaFlow: Found more than 200 Java files — scanning was capped at 200. Results may be incomplete.`
               );
             }
 
