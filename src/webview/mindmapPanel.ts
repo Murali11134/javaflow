@@ -326,7 +326,7 @@ const vscodeApi = acquireVsCodeApi();
     spacingHorizontal: 60,
     spacingVertical: 5,
     autoFit: true,
-    initialExpandLevel: -1,
+    initialExpandLevel: 2,
     color: (node) => {
       const depth = node.depth || 0;
       const palette = ['#89b4fa','#a6e3a1','#fab387','#f5c2e7','#94e2d5','#cba6f7','#f38ba8'];

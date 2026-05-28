@@ -108,7 +108,8 @@ export class WorkspaceIndex {
       // Single owner — unambiguous
       if (owners.length === 1) { return { className: owners[0], methodName: name }; }
 
-      // Multiple owners: prefer parent class FQN, then first non-self FQN.
+      // Multiple owners: prefer parent class, then non-self (injected collaborator is
+      // far more common in Java than self-recursion), then self as last resort.
       if (callerCls?.parentClass) {
         const parentFqn = owners.find(
           o => o === callerCls.parentClass || o.endsWith(`.${callerCls.parentClass}`)
