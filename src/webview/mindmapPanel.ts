@@ -107,7 +107,8 @@ export class MindmapPanel {
     const escaped = markdownContent
       .replace(/\\/g, '\\\\')
       .replace(/`/g, '\\`')
-      .replace(/\$/g, '\\$');
+      .replace(/\$/g, '\\$')
+      .replace(/<\//g, '<\\/');   // prevent </script> from closing the script block
 
     // Local script URIs (offline-safe)
     const d3Uri          = this._mediaUri('d3.min.js');
@@ -126,7 +127,7 @@ export class MindmapPanel {
         content="default-src 'none';
                  script-src 'nonce-${nonce}';
                  style-src 'unsafe-inline';
-                 img-src ${this._panel.webview.cspSource} data:;" />
+                 img-src ${this._panel.webview.cspSource};" />
   <title>JavaFlow Mindmap</title>
 
   <script nonce="${nonce}" src="${d3Uri}"></script>

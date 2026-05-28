@@ -104,8 +104,8 @@ export function activate(context: vscode.ExtensionContext): void {
       }
 
       await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: 'JavaFlow: Scanning Java files…', cancellable: false },
-        async (progress) => {
+        { location: vscode.ProgressLocation.Notification, title: 'JavaFlow: Scanning Java files…', cancellable: true },
+        async (progress, token) => {
           try {
             progress.report({ message: 'Finding .java files…' });
             const javaFiles = collectJavaFiles(folderPath!);
@@ -120,13 +120,18 @@ export function activate(context: vscode.ExtensionContext): void {
               );
             }
 
-            progress.report({ message: `Parsing ${javaFiles.length} files…` });
             const allClasses: JavaClass[] = [];
-            for (const fp of javaFiles) {
+            let failed = 0;
+            for (let i = 0; i < javaFiles.length; i++) {
+              if (token.isCancellationRequested) { return; }
+              progress.report({ message: `Parsing file ${i + 1} of ${javaFiles.length}…`, increment: 100 / javaFiles.length });
               try {
-                const source = fs.readFileSync(fp, 'utf-8');
-                allClasses.push(...parseJavaFile(source, fp));
-              } catch { /* skip unparseable files */ }
+                const source = fs.readFileSync(javaFiles[i], 'utf-8');
+                allClasses.push(...parseJavaFile(source, javaFiles[i]));
+              } catch { failed++; }
+            }
+            if (failed > 0) {
+              vscode.window.showWarningMessage(`JavaFlow: ${failed} file${failed > 1 ? 's' : ''} could not be parsed and were skipped.`);
             }
 
             if (allClasses.length === 0) {
