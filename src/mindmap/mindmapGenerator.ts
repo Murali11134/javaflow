@@ -73,8 +73,9 @@ function renderClass(
     if (cls.superClass) {
       lines.push(`${h(headingLevel + 2)} extends ${cls.superClass}`);
     }
+    const ifaceLabel = cls.kind === 'interface' ? 'extends' : 'implements';
     for (const iface of cls.interfaces) {
-      lines.push(`${h(headingLevel + 2)} implements ${iface}`);
+      lines.push(`${h(headingLevel + 2)} ${ifaceLabel} ${iface}`);
     }
   }
 

@@ -268,7 +268,8 @@ export class MindmapPanel {
   <span class="legend-item">🏛 Class</span>
   <span class="legend-item">📐 Interface</span>
   <span class="legend-item">🔢 Enum</span>
-  <span class="legend-item">📝 Annotation</span>
+  <span class="legend-item">🏷 Annotation</span>
+  <span class="legend-item">📋 Record</span>
   <span class="legend-item">🔓 Public</span>
   <span class="legend-item">🔒 Private/Protected</span>
   <span class="legend-item">💡 NLP Summary</span>
