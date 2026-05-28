@@ -28,10 +28,10 @@ function decamelize(name: string): string {
     .trim();
 }
 
-/** Strip @param / @return / @throws tags from Javadoc and return the summary sentence */
+/** Strip @param / @return / @throws tags (including multi-line continuations) from Javadoc */
 function cleanJavadoc(doc: string): string {
   return doc
-    .replace(/@\w+[^\n]*/g, '')
+    .replace(/@\w[\s\S]*?(?=@\w|$)/g, '')   // strip each tag block including its continuation lines
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -49,8 +49,18 @@ export function summarizeMethod(method: JavaMethod, parentClass: JavaClass): str
   const parts: string[] = [];
   const readableName = decamelize(method.name);
 
-  // Detect common patterns
-  if (/^get[A-Z]/.test(method.name)) {
+  // Well-known Object / Comparable overrides
+  const objectMethods: Record<string, string> = {
+    toString:    'Returns a string representation of this object.',
+    equals:      'Checks equality with another object.',
+    hashCode:    'Returns the hash code for this object.',
+    compareTo:   'Compares this object with another for ordering.',
+    clone:       'Creates and returns a copy of this object.',
+    finalize:    'Called by the garbage collector before reclamation.',
+  };
+  if (objectMethods[method.name]) {
+    parts.push(objectMethods[method.name]);
+  } else if (/^get[A-Z]/.test(method.name)) {
     const prop = decamelize(method.name.slice(3));
     parts.push(`Returns the ${prop}.`);
   } else if (/^set[A-Z]/.test(method.name)) {
@@ -66,15 +76,29 @@ export function summarizeMethod(method: JavaMethod, parentClass: JavaClass): str
     const thing = decamelize(method.name.replace(/^(create|build|make)/, ''));
     parts.push(`Creates ${thing ? 'a ' + thing : 'a new instance'}.`);
   } else if (/^find|^get|^fetch|^load|^read/.test(method.name)) {
-    parts.push(`Retrieves ${readableName.replace(/^(find|get|fetch|load|read)\s*/, '')}.`);
+    const subject = readableName.replace(/^(find|get|fetch|load|read)\s*/, '');
+    parts.push(subject ? `Retrieves ${subject}.` : 'Retrieves the result.');
   } else if (/^save|^persist|^write|^store/.test(method.name)) {
-    parts.push(`Persists ${readableName.replace(/^(save|persist|write|store)\s*/, '')}.`);
+    const subject = readableName.replace(/^(save|persist|write|store)\s*/, '');
+    parts.push(subject ? `Persists ${subject}.` : 'Persists the entity.');
   } else if (/^delete|^remove|^clear/.test(method.name)) {
-    parts.push(`Removes ${readableName.replace(/^(delete|remove|clear)\s*/, '')}.`);
+    const subject = readableName.replace(/^(delete|remove|clear)\s*/, '');
+    parts.push(subject ? `Removes ${subject}.` : 'Removes the entry.');
   } else if (/^validate|^check|^verify/.test(method.name)) {
-    parts.push(`Validates ${readableName.replace(/^(validate|check|verify)\s*/, '')}.`);
-  } else if (/^process|^handle|^execute|^run|^perform/.test(method.name)) {
-    parts.push(`Processes ${readableName.replace(/^(process|handle|execute|run|perform)\s*/, '')}.`);
+    const subject = readableName.replace(/^(validate|check|verify)\s*/, '');
+    parts.push(subject ? `Validates ${subject}.` : 'Validates the input.');
+  } else if (/^(process|handle|execute|run|perform|call|invoke|dispatch)/.test(method.name)) {
+    const subject = readableName.replace(/^(process|handle|execute|run|perform|call|invoke|dispatch)\s*/, '');
+    parts.push(subject ? `Executes ${subject}.` : 'Executes the operation.');
+  } else if (/^init|^initialize|^setup|^configure/.test(method.name)) {
+    const subject = readableName.replace(/^(init|initialize|setup|configure)\s*/, '');
+    parts.push(subject ? `Initialises ${subject}.` : 'Initialises the component.');
+  } else if (/^send|^publish|^emit|^notify/.test(method.name)) {
+    const subject = readableName.replace(/^(send|publish|emit|notify)\s*/, '');
+    parts.push(subject ? `Sends ${subject}.` : 'Sends the event.');
+  } else if (/^convert|^transform|^map|^parse/.test(method.name)) {
+    const subject = readableName.replace(/^(convert|transform|map|parse)\s*/, '');
+    parts.push(subject ? `Converts ${subject}.` : 'Converts the value.');
   } else {
     parts.push(`${titleCase(readableName)}.`);
   }

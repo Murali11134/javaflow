@@ -352,15 +352,13 @@ const vscodeApi = acquireVsCodeApi();
 
   document.getElementById('btn-collapse-all').addEventListener('click', () => {
     if (!mm?.state?.data) { return; }
-    function collapseChildren(node) {
-      if (node.children) {
-        node.children.forEach(child => {
-          if (child.payload) { child.payload.fold = 1; } else { child.payload = { fold: 1 }; }
-          collapseChildren(child);
-        });
-      }
+    function collapseAll(node) {
+      if (node.payload) { node.payload.fold = 1; } else { node.payload = { fold: 1 }; }
+      if (node.children) { node.children.forEach(collapseAll); }
     }
-    collapseChildren(mm.state.data);
+    // Collapse root's children but keep root itself visible so the tree isn't blank.
+    const root = mm.state.data;
+    if (root.children) { root.children.forEach(collapseAll); }
     mm.renderData().then(() => mm.fit());
   });
 

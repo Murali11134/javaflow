@@ -48,18 +48,25 @@ export class WorkspaceIndex {
   private methodOwners = new Map<string, string[]>();
 
   constructor(classes: JavaClass[]) {
+    // First pass: register every class by FQN and populate methodOwners.
     for (const cls of classes) {
-      // Register by FQN so duplicate simple names across packages never overwrite each other.
       const fqn = cls.packageName ? `${cls.packageName}.${cls.name}` : cls.name;
       this.classMap.set(fqn, cls);
-      // Also register by simple name as a convenience alias — only when unambiguous.
-      if (!this.classMap.has(cls.name)) {
-        this.classMap.set(cls.name, cls);
-      }
       for (const method of cls.methods) {
         const owners = this.methodOwners.get(method.name) ?? [];
         owners.push(cls.name);
         this.methodOwners.set(method.name, owners);
+      }
+    }
+    // Second pass: add a simple-name alias only when globally unambiguous.
+    // Two-pass approach makes this deterministic regardless of input order.
+    const simpleCount = new Map<string, number>();
+    for (const cls of classes) {
+      simpleCount.set(cls.name, (simpleCount.get(cls.name) ?? 0) + 1);
+    }
+    for (const cls of classes) {
+      if (simpleCount.get(cls.name) === 1) {
+        this.classMap.set(cls.name, cls);
       }
     }
   }
