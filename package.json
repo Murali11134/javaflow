@@ -2,7 +2,7 @@
   "name": "javaflow",
   "displayName": "JavaFlow",
   "description": "Understand your Java codebase through interactive mindmaps with NLP summaries",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "publisher": "javaflow",
   "license": "MIT",
   "repository": {

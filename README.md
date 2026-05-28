@@ -134,10 +134,10 @@ Install dependencies:
 npm install
 ```
 
-Compile the extension:
+Bundle the extension:
 
 ```bash
-npm run compile
+npm run esbuild-prod
 ```
 
 Open the project in VS Code:
@@ -193,7 +193,7 @@ JavaFlow contributes the following VS Code settings:
 
 ## Current Limitations
 
-- Records, sealed classes, and text blocks are parsed structurally but not yet surfaced in the mindmap output.
+- Sealed classes and text blocks are not yet surfaced in the mindmap output.
 - The folder scan is capped at 200 Java files.
 - The test suite covers core parser and mindmap generation behaviour; broader edge-case coverage is still needed.
 - Template-based NLP summaries are helpful but are not true semantic code understanding.
@@ -201,10 +201,10 @@ JavaFlow contributes the following VS Code settings:
 ## Development Scripts
 
 ```bash
-npm run compile
+npm run esbuild-prod
 ```
 
-Compiles the TypeScript source into the `out/` directory.
+Bundles the extension and all dependencies into `out/extension.js`.
 
 ```bash
 npm run watch

@@ -23,7 +23,7 @@ export interface MindmapOptions {
 // ---------------------------------------------------------------------------
 
 const KIND_EMOJI: Record<string, string> = {
-  class: '🏛', interface: '📐', enum: '🔢', annotation: '🏷'
+  class: '🏛', interface: '📐', enum: '🔢', annotation: '🏷', record: '📋'
 };
 
 function visEmoji(visibility: string): string {

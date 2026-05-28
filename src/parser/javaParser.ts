@@ -37,7 +37,7 @@ export interface JavaMethod {
 
 export interface JavaClass {
   name: string;
-  kind: 'class' | 'interface' | 'enum' | 'annotation';
+  kind: 'class' | 'interface' | 'enum' | 'annotation' | 'record';
   visibility: string;
   isAbstract: boolean;
   superClass: string | null;
@@ -347,6 +347,43 @@ function processClassDecl(
       fields, methods,
       nestedClasses: nested.filter(n => n.parentClass === name).map(n => n.name),
       enumConstants: [],
+      javadoc: findJavadoc(source, startOf(classDeclNode)),
+      packageName: pkgName, imports, filePath,
+    };
+    return [cls, ...nested];
+  }
+
+  // Record
+  const recordDecl = kid(ctx, 'recordDeclaration');
+  if (recordDecl) {
+    const rc   = recordDecl.children ?? {};
+    const name = kids(kid(rc, 'typeIdentifier')?.children, 'Identifier')[0]?.image ?? '';
+    const interfaces = kids(kid(kid(rc, 'classImplements')?.children, 'interfaceTypeList')?.children, 'interfaceType')
+      .map((it: any) => flatten(it).trim());
+    // Record components become implicitly public final fields
+    const compList = kid(kid(rc, 'recordHeader')?.children, 'recordComponentList');
+    const componentFields: JavaField[] = kids(compList?.children, 'recordComponent').map((comp: any) => {
+      const cc = comp.children ?? {};
+      return {
+        name:       kids(cc, 'Identifier')[0]?.image ?? '',
+        type:       flatten(kid(cc, 'unannType')).trim(),
+        visibility: 'public',
+        isStatic:   false,
+        isFinal:    true,
+        javadoc:    '',
+      } as JavaField;
+    }).filter((f: JavaField) => f.name);
+    // Body declarations reuse the same classBodyDeclaration structure
+    const bodyDecls = kids(kid(rc, 'recordBody')?.children, 'recordBodyDeclaration')
+      .flatMap((rbd: any) => kids(rbd.children, 'classBodyDeclaration'));
+    const { fields, methods, nested } = processClassBodyDecls(bodyDecls, name, source, pkgName, imports, filePath);
+    const cls: JavaClass = {
+      name, kind: 'record', parentClass,
+      visibility: mods.visibility, isAbstract: false,
+      annotations: mods.annotations, superClass: null, interfaces,
+      fields: [...componentFields, ...fields],
+      methods, enumConstants: [],
+      nestedClasses: nested.filter(n => n.parentClass === name).map(n => n.name),
       javadoc: findJavadoc(source, startOf(classDeclNode)),
       packageName: pkgName, imports, filePath,
     };
