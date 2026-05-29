@@ -11,7 +11,7 @@
  *   const chain  = index.getCallChain('UserService', 'save', 3);
  */
 
-import { JavaClass, JavaMethod } from '../parser/javaParser';
+import { JavaClass } from '../parser/javaParser';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -165,10 +165,13 @@ export class WorkspaceIndex {
     const cls = this.classMap.get(className);
     if (!cls) { return []; }
 
-    const method: JavaMethod | undefined = cls.methods.find(m => m.name === methodName);
-    if (!method || method.callsTo.length === 0) { return []; }
+    // Merge callsTo from all overloads sharing the same name
+    const overloads = cls.methods.filter(m => m.name === methodName);
+    if (overloads.length === 0) { return []; }
+    const mergedCallsTo = [...new Set(overloads.flatMap(m => m.callsTo))];
+    if (mergedCallsTo.length === 0) { return []; }
 
-    const resolved = this.resolveCallsTo(method.callsTo, className);
+    const resolved = this.resolveCallsTo(mergedCallsTo, className);
     return resolved.map(ref => {
       const simpleName = ref.className !== '?' ? (ref.className.split('.').pop() ?? ref.className) : null;
       return {

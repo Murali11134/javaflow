@@ -55,7 +55,7 @@ function renderClass(
   if (cls.annotations.length > 0) {
     lines.push(`${h(headingLevel + 1)} 📝 Annotations`);
     for (const ann of cls.annotations) {
-      lines.push(`${h(headingLevel + 2)} ${ann}`);
+      lines.push(`${h(headingLevel + 2)} ${escHtml(ann)}`);
     }
   }
 
@@ -121,7 +121,7 @@ function renderClass(
         ? `${method.name}(${params}) : ${escHtml(method.returnType)}`
         : `${method.name}(${params})`;
       const annPrefix = method.annotations.length > 0
-        ? method.annotations.join(' ') + ' '
+        ? method.annotations.map(escHtml).join(' ') + ' '
         : '';
       lines.push(`${h(headingLevel + 2)} ${visEmoji(method.visibility)} ${annPrefix}${sig}`);
 
@@ -221,10 +221,11 @@ export function generateClassMindmap(
   const topLevel = all.filter(c => c.parentClass === null);
   const lines: string[] = [];
 
-  if (topLevel.length > 1 && rootLabel) {
+  if (topLevel.length > 1) {
+    const label = rootLabel ?? topLevel.map(c => c.name).join(', ');
     const sharedPkg = topLevel[0]?.packageName;
     const pkgSuffix = sharedPkg ? ` · ${sharedPkg}` : '';
-    lines.push(`# ☕ ${rootLabel}${pkgSuffix}`);
+    lines.push(`# ☕ ${label}${pkgSuffix}`);
     for (const topCls of topLevel) {
       renderClass(topCls, opts, lines, 2, idx);
     }
@@ -261,7 +262,7 @@ export function generateFolderMindmap(
     packages.set(pkg, arr);
   }
 
-  for (const [pkg, pkgClasses] of [...packages.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [pkg, pkgClasses] of [...packages.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([p, cs]) => [p, [...cs].sort((a, b) => a.name.localeCompare(b.name))] as const)) {
     lines.push(`## 📦 ${pkg}`);
     for (const cls of pkgClasses) {
       const summary = opts.nlpSummaries ? buildClassSummary(cls) : null;
@@ -270,7 +271,7 @@ export function generateFolderMindmap(
       lines.push(`### ${emoji} ${cls.name}`);
       if (summary) { lines.push(`#### 💡 ${escHtml(summary.classSummary)}`); }
       if (cls.annotations.length > 0) {
-        lines.push(`#### 📝 ${cls.annotations.join(' ')}`);
+        lines.push(`#### 📝 ${cls.annotations.map(escHtml).join(' ')}`);
       }
       if (cls.superClass) { lines.push(`#### extends ${escHtml(cls.superClass)}`); }
       if (cls.interfaces.length > 0) {
@@ -292,7 +293,7 @@ export function generateFolderMindmap(
           const nestedEmoji = KIND_EMOJI[nestedCls.kind] ?? '🏛';
           lines.push(`##### ${nestedEmoji} ${nestedCls.name}`);
           if (nestedCls.annotations.length > 0) {
-            lines.push(`###### 📝 ${nestedCls.annotations.join(' ')}`);
+            lines.push(`###### 📝 ${nestedCls.annotations.map(escHtml).join(' ')}`);
           }
           if (nestedCls.enumConstants.length > 0) {
             const shown = nestedCls.enumConstants.slice(0, 4);

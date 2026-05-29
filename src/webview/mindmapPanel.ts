@@ -424,6 +424,7 @@ const vscodeApi = acquireVsCodeApi();
   let matches = [];
   let matchIndex = -1;
   let cachedParentMap = null;
+  let _searchDebounceTimer = null;
 
   // Inline text highlight tracking
   const _origContent = new Map();
@@ -441,17 +442,27 @@ const vscodeApi = acquireVsCodeApi();
   function applyInlineHighlights(q) {
     clearInlineHighlights();
     if (!mm?.state?.data) { return; }
+    // HTML-encode the query so it matches entity-encoded content (e.g. List&lt;String&gt;)
+    const encodedQ = q.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const MARK_OPEN  = '<mark style="background:#f9e2af;color:#1e1e2e;border-radius:2px">';
+    const MARK_CLOSE = '</mark>';
     function walkHL(node) {
       const id = node.state?.id;
       const orig = node.content ?? '';
       if (id != null && !_origContent.has(id)) { _origContent.set(id, orig); }
-      const idx = orig.toLowerCase().indexOf(q);
-      if (idx >= 0 && id != null) {
-        node.content = orig.slice(0, idx) +
-          '<mark style="background:#f9e2af;color:#1e1e2e;border-radius:2px">' +
-          orig.slice(idx, idx + q.length) +
-          '</mark>' +
-          orig.slice(idx + q.length);
+      // Replace ALL occurrences of encodedQ (case-insensitive)
+      const lower = orig.toLowerCase();
+      const lowerQ = encodedQ.toLowerCase();
+      if (id != null && lowerQ && lower.includes(lowerQ)) {
+        let result = '';
+        let cursor = 0;
+        while (cursor < orig.length) {
+          const pos = lower.indexOf(lowerQ, cursor);
+          if (pos < 0) { result += orig.slice(cursor); break; }
+          result += orig.slice(cursor, pos) + MARK_OPEN + orig.slice(pos, pos + encodedQ.length) + MARK_CLOSE;
+          cursor = pos + encodedQ.length;
+        }
+        node.content = result;
         _highlightedNodes.push(node);
       }
       if (node.children) { node.children.forEach(walkHL); }
@@ -463,10 +474,12 @@ const vscodeApi = acquireVsCodeApi();
     matches = [];
     cachedParentMap = null;
     if (!mm?.state?.data) { return; }
+    // HTML-encode the query to match entity-encoded content (e.g. generics)
+    const encodedQ = q.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const map = new Map();
     function walk(node, parent) {
       const plain = (node.content || '').replace(/<[^>]*>/g, '').toLowerCase();
-      if (plain.includes(q)) { matches.push(node); }
+      if (plain.includes(encodedQ.toLowerCase())) { matches.push(node); }
       if (parent && node.state?.id != null) { map.set(node.state.id, parent); }
       if (node.children) { node.children.forEach(c => walk(c, node)); }
     }
@@ -512,26 +525,30 @@ const vscodeApi = acquireVsCodeApi();
   document.getElementById('btn-prev').addEventListener('click', async () => { await goToMatch(matchIndex - 1); });
   document.getElementById('btn-next').addEventListener('click', async () => { await goToMatch(matchIndex + 1); });
 
-  searchInput.addEventListener('input', async () => {
-    const q = searchInput.value.trim().toLowerCase();
-    if (!q) {
-      searchCount.textContent = '';
-      matches = [];
-      matchIndex = -1;
-      clearInlineHighlights();
-      try { await mm.renderData(); } catch (_) {}
-      try { mm.setHighlight(undefined); } catch (_) {}
-      return;
-    }
-    collectMatches(q);
-    applyInlineHighlights(q);
-    if (matches.length) {
-      await goToMatch(0);
-    } else {
-      searchCount.textContent = 'No matches';
-      try { mm.renderData().catch(() => {}); } catch (_) {}
-      try { mm.setHighlight(undefined); } catch (_) {}
-    }
+  searchInput.addEventListener('input', () => {
+    if (_searchDebounceTimer !== null) { clearTimeout(_searchDebounceTimer); }
+    _searchDebounceTimer = setTimeout(async () => {
+      _searchDebounceTimer = null;
+      const q = searchInput.value.trim().toLowerCase();
+      if (!q) {
+        searchCount.textContent = '';
+        matches = [];
+        matchIndex = -1;
+        clearInlineHighlights();
+        try { await mm.renderData(); } catch (_) {}
+        try { mm.setHighlight(undefined); } catch (_) {}
+        return;
+      }
+      collectMatches(q);
+      applyInlineHighlights(q);
+      if (matches.length) {
+        await goToMatch(0);
+      } else {
+        searchCount.textContent = 'No matches';
+        try { mm.renderData().catch(() => {}); } catch (_) {}
+        try { mm.setHighlight(undefined); } catch (_) {}
+      }
+    }, 200);
   });
 
   searchInput.addEventListener('keydown', async e => {

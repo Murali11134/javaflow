@@ -41,7 +41,7 @@ function cleanJavadoc(doc: string): string {
 // Method summary
 // ─────────────────────────────────────────────────────────────────
 
-export function summarizeMethod(method: JavaMethod, parentClass: JavaClass): string {
+export function summarizeMethod(method: JavaMethod): string {
   if (!method.name) { return 'Internal method.'; }
 
   // 1. Javadoc wins
@@ -197,12 +197,6 @@ export function summarizeClass(cls: JavaClass): string {
     }
   }
 
-  if (cls.superClass) {
-    parts.push(`Extends ${cls.superClass}.`);
-  }
-  if (cls.interfaces.length > 0) {
-    parts.push(`Implements ${cls.interfaces.join(', ')}.`);
-  }
   const pubMethods = cls.methods.filter(m => m.visibility === 'public').length;
   if (pubMethods > 0) {
     parts.push(`Exposes ${pubMethods} public method${pubMethods > 1 ? 's' : ''}.`);
@@ -226,7 +220,7 @@ export function buildClassSummary(cls: JavaClass): ClassSummary {
   const fieldSummaries = new Map<string, string>();
 
   for (const method of cls.methods) {
-    methodSummaries.set(`${method.name}|${method.parameters.map(p => p.type).join(',')}`, summarizeMethod(method, cls));
+    methodSummaries.set(`${method.name}|${method.parameters.map(p => p.type).join(',')}`, summarizeMethod(method));
   }
   for (const field of cls.fields) {
     fieldSummaries.set(field.name, summarizeField(field));
