@@ -165,13 +165,15 @@ export class WorkspaceIndex {
     const cls = this.classMap.get(className);
     if (!cls) { return []; }
 
-    // Merge callsTo from all overloads sharing the same name
     const overloads = cls.methods.filter(m => m.name === methodName);
     if (overloads.length === 0) { return []; }
-    const mergedCallsTo = [...new Set(overloads.flatMap(m => m.callsTo))];
-    if (mergedCallsTo.length === 0) { return []; }
+    // Use the overload with the most callsTo as the representative implementation.
+    // Merging all overloads would conflate separate code paths, producing a call chain
+    // that no single overload actually follows.
+    const primary = overloads.reduce((best, m) => m.callsTo.length > best.callsTo.length ? m : best);
+    if (primary.callsTo.length === 0) { return []; }
 
-    const resolved = this.resolveCallsTo(mergedCallsTo, className);
+    const resolved = this.resolveCallsTo(primary.callsTo, className);
     return resolved.map(ref => {
       const simpleName = ref.className !== '?' ? (ref.className.split('.').pop() ?? ref.className) : null;
       return {

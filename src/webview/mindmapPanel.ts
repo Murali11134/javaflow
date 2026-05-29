@@ -474,12 +474,17 @@ const vscodeApi = acquireVsCodeApi();
     matches = [];
     cachedParentMap = null;
     if (!mm?.state?.data) { return; }
-    // HTML-encode the query to match entity-encoded content (e.g. generics)
-    const encodedQ = q.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const map = new Map();
     function walk(node, parent) {
-      const plain = (node.content || '').replace(/<[^>]*>/g, '').toLowerCase();
-      if (plain.includes(encodedQ.toLowerCase())) { matches.push(node); }
+      // Strip tags then decode entities so the plain text matches what the user typed.
+      // Decoding entities avoids false positives where entity fragments like &lt; would
+      // match searches for substrings like "lt" or "t;".
+      const plain = (node.content || '')
+        .replace(/<[^>]*>/g, '')
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+        .toLowerCase();
+      if (plain.includes(q)) { matches.push(node); }
       if (parent && node.state?.id != null) { map.set(node.state.id, parent); }
       if (node.children) { node.children.forEach(c => walk(c, node)); }
     }
@@ -552,7 +557,16 @@ const vscodeApi = acquireVsCodeApi();
   });
 
   searchInput.addEventListener('keydown', async e => {
-    if (e.key === 'Enter') { e.shiftKey ? await goToMatch(matchIndex - 1) : await goToMatch(matchIndex + 1); }
+    if (e.key === 'Enter') {
+      // Flush a pending debounce so we navigate into the current query, not the previous one.
+      if (_searchDebounceTimer !== null) {
+        clearTimeout(_searchDebounceTimer);
+        _searchDebounceTimer = null;
+        const q = searchInput.value.trim().toLowerCase();
+        if (q) { collectMatches(q); applyInlineHighlights(q); }
+      }
+      e.shiftKey ? await goToMatch(matchIndex - 1) : await goToMatch(matchIndex + 1);
+    }
     if (e.key === 'Escape') { document.getElementById('btn-search-close').click(); }
   });
 

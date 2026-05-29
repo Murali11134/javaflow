@@ -197,6 +197,12 @@ export function summarizeClass(cls: JavaClass): string {
     }
   }
 
+  if (cls.superClass) {
+    parts.push(`Extends ${cls.superClass}.`);
+  }
+  if (cls.interfaces.length > 0) {
+    parts.push(`Implements ${cls.interfaces.join(', ')}.`);
+  }
   const pubMethods = cls.methods.filter(m => m.visibility === 'public').length;
   if (pubMethods > 0) {
     parts.push(`Exposes ${pubMethods} public method${pubMethods > 1 ? 's' : ''}.`);

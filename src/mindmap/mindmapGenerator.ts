@@ -223,8 +223,8 @@ export function generateClassMindmap(
 
   if (topLevel.length > 1) {
     const label = rootLabel ?? topLevel.map(c => c.name).join(', ');
-    const sharedPkg = topLevel[0]?.packageName;
-    const pkgSuffix = sharedPkg ? ` · ${sharedPkg}` : '';
+    const pkgs = [...new Set(topLevel.map(c => c.packageName).filter(Boolean))];
+    const pkgSuffix = pkgs.length === 1 ? ` · ${pkgs[0]}` : '';
     lines.push(`# ☕ ${label}${pkgSuffix}`);
     for (const topCls of topLevel) {
       renderClass(topCls, opts, lines, 2, idx);
