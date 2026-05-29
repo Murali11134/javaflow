@@ -54,11 +54,7 @@ suite('JavaParser', () => {
     assert.strictEqual(cls.name, 'Direction');
   });
 
-  test('TODO: parses an annotation type (@interface)', function () {
-    // Current parser returns [] for annotation declarations. Keep this case visible
-    // as a pending test instead of hiding the gap or weakening the parser contract.
-    this.skip();
-
+  test('parses an annotation type (@interface)', () => {
     const src = `
       package com.example;
       public @interface MyAnnotation {
@@ -70,6 +66,11 @@ suite('JavaParser', () => {
     assert.strictEqual(classes.length, 1);
     assert.strictEqual(classes[0].kind, 'annotation');
     assert.strictEqual(classes[0].name, 'MyAnnotation');
+    assert.strictEqual(classes[0].visibility, 'public');
+    assert.strictEqual(classes[0].packageName, 'com.example');
+    assert.strictEqual(classes[0].methods.length, 2);
+    assert.ok(classes[0].methods.some(m => m.name === 'value' && m.returnType === 'String'));
+    assert.ok(classes[0].methods.some(m => m.name === 'priority' && m.returnType === 'int'));
   });
 
   // ── Nested / inner class tracking ─────────────────────────────

@@ -362,6 +362,7 @@ const vscodeApi = acquireVsCodeApi();
       mm.state.data = newRoot;
       document.getElementById('title-text').textContent = '☕ ' + msg.title;
       // Clear stale search state — old tree nodes are now orphaned after the swap.
+      if (_searchDebounceTimer !== null) { clearTimeout(_searchDebounceTimer); _searchDebounceTimer = null; }
       clearInlineHighlights();
       matches = [];
       matchIndex = -1;
@@ -412,9 +413,20 @@ const vscodeApi = acquireVsCodeApi();
   });
 
   const btnExport = document.getElementById('btn-export');
-  btnExport.addEventListener('click', () => {
+  btnExport.addEventListener('click', async () => {
+    // Clear search highlights before capturing so the exported SVG is clean,
+    // then restore them so the UI looks unchanged after export.
+    const hadHighlights = _highlightedNodes.length > 0;
+    if (hadHighlights) {
+      clearInlineHighlights();
+      try { await mm.renderData(); } catch (_) {}
+    }
     const svg = document.getElementById('mindmap');
     vscodeApi.postMessage({ command: 'exportSvg', svg: svg.outerHTML });
+    if (hadHighlights) {
+      const q = searchInput.value.trim().toLowerCase();
+      if (q) { applyInlineHighlights(q); try { await mm.renderData(); } catch (_) {} }
+    }
   });
 
   const searchBar   = document.getElementById('search-bar');
@@ -517,6 +529,7 @@ const vscodeApi = acquireVsCodeApi();
     if (nowVisible) { searchInput.focus(); }
   });
   document.getElementById('btn-search-close').addEventListener('click', async () => {
+    if (_searchDebounceTimer !== null) { clearTimeout(_searchDebounceTimer); _searchDebounceTimer = null; }
     searchBar.classList.remove('visible');
     document.getElementById('btn-search').classList.remove('active');
     searchInput.value = '';

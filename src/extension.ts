@@ -35,7 +35,11 @@ function collectJavaFiles(dirPath: string, max = 200): string[] {
     try {
       const entries = fs.readdirSync(p, { withFileTypes: true });
       for (const e of entries) {
-        if (e.name.startsWith('.') || ['node_modules','target','build','out','dist','.gradle'].includes(e.name)) { continue; }
+        if (e.name.startsWith('.') || [
+          'node_modules', 'target', 'build', 'out', 'dist', '.gradle',
+          'bin', 'classes', 'generated', 'generated-sources', 'generated-test-sources',
+          '.idea', '.mvn', '.settings', '.classpath',
+        ].includes(e.name)) { continue; }
         const full = path.join(p, e.name);
         if (e.isDirectory()) { walk(full); }
         else if (e.isFile() && e.name.endsWith('.java')) { files.push(full); if (files.length >= max) { return; } }

@@ -31,8 +31,8 @@ function decamelize(name: string): string {
 /** Strip @param / @return / @throws tags (including multi-line continuations) from Javadoc */
 function cleanJavadoc(doc: string): string {
   return doc
-    .replace(/\{@\w+\s*([^}]*)\}/g, '$1')   // unwrap inline tags: {@link Foo} → Foo, {@code x} → x
-    .replace(/@\w+[\s\S]*?(?=@\w+|$)/g, '') // strip block tags: @param, @return, @throws, etc.
+    .replace(/\{@\w+\s*([^}]*)\}/g, '$1')          // unwrap inline tags: {@link Foo} → Foo, {@code x} → x
+    .replace(/^\s*@\w+[\s\S]*?(?=^\s*@\w+|\s*$)/gm, '') // strip block tags anchored to line starts only
     .replace(/\s+/g, ' ')
     .trim();
 }

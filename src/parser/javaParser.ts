@@ -473,22 +473,25 @@ function processInterfaceDecl(
   }
 
   // Annotation type (@interface)
-  const annotDecl = kid(ctx, 'annotationTypeDeclaration');
+  // CST key is annotationInterfaceDeclaration (not annotationTypeDeclaration).
+  const annotDecl = kid(ctx, 'annotationInterfaceDeclaration');
   if (annotDecl) {
     const ac   = annotDecl.children ?? {};
     const name = kids(kid(ac, 'typeIdentifier')?.children, 'Identifier')[0]?.image ?? '';
     if (!name) { return []; }
-    const bodyDecls = kids(kid(ac, 'annotationTypeBody')?.children, 'annotationTypeElementDeclaration');
-    const methods: JavaMethod[] = bodyDecls.flatMap((decl: any) => {
-      const rest = kid(decl.children ?? {}, 'annotationTypeElementRest');
-      if (!rest) { return []; }
-      const rc = rest.children ?? {};
-      const elemName = kids(rc, 'Identifier')[0]?.image ?? '';
+    const memberDecls = kids(kid(ac, 'annotationInterfaceBody')?.children, 'annotationInterfaceMemberDeclaration');
+    const methods: JavaMethod[] = memberDecls.flatMap((member: any) => {
+      // Each member wraps an annotationInterfaceElementDeclaration with a flat structure:
+      // { unannType, Identifier, LBrace, RBrace, defaultValue?, Semicolon }
+      const elemDecl = kid(member.children ?? {}, 'annotationInterfaceElementDeclaration');
+      if (!elemDecl) { return []; }
+      const ec = elemDecl.children ?? {};
+      const elemName = kids(ec, 'Identifier')[0]?.image ?? '';
       if (!elemName) { return []; }
       return [{
-        name: elemName, returnType: flatten(kid(rc, 'unannType')).trim(),
+        name: elemName, returnType: flatten(kid(ec, 'unannType')).trim(),
         parameters: [], visibility: 'public', isStatic: false,
-        isAbstract: false, annotations: [], javadoc: findJavadoc(source, startOf(decl)), callsTo: [],
+        isAbstract: false, annotations: [], javadoc: findJavadoc(source, startOf(member)), callsTo: [],
       } as JavaMethod];
     });
     return [{

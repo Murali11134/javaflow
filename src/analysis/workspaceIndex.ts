@@ -189,11 +189,6 @@ export class WorkspaceIndex {
 
   // ── Utility ──────────────────────────────────────────────────────
 
-  /** All top-level classes (no parent) in the index. */
-  topLevelClasses(): JavaClass[] {
-    return Array.from(new Set(this.classMap.values())).filter(c => c.parentClass === null);
-  }
-
   /** All direct children of a given class name. */
   nestedClassesOf(className: string): JavaClass[] {
     const byParent = this.parentMap.get(className);
